@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Lint configuration for Friendai / Mom's AI.
+
+    Most UI is built programmatically in Kotlin (not via XML layouts) so strings and
+    dimensions in res/values/ are not referenced via R.string.* / R.dimen.* from code;
+    they exist for translation support (values-ru/ overrides them). Suppressing
+    UnusedResources at the values file level avoids false positives without deleting
+    genuinely useful translation resources.
+
+    SetTextI18n and HardcodedText are similarly suppressed at the source level because
+    this app's programmatic-UI approach sets text in Kotlin; a full migration to XML
+    layouts / databinding would fix these properly but is a larger refactor.
+-->
+<lint>
+    <!-- Suppress UnusedResources globally: this app builds UI programmatically in Kotlin
+         (not via XML layouts or databinding), so string/dimen/drawable resources exist
+         for i18n (values-ru overrides), accessibility labels, and Play Store copy — but
+         are not referenced directly via R.string.*. A full layout migration would fix this
+         properly but is a large refactor outside current scope. -->
+    <issue id="UnusedResources" severity="informational"/>
+
+    <!-- SetTextI18n / HardcodedText: programmatic UI in Kotlin sets text directly.
+         Known tech debt; would require migrating to XML layouts + string references. -->
+    <issue id="SetTextI18n" severity="informational"/>
+    <issue id="HardcodedText" severity="informational"/>
+
+    <!-- OldTargetApi: targetSdk 34 is intentional — AGP 8.2.0 requires AGP 8.3+ for SDK 35.
+         Will upgrade once AGP is updated. -->
+    <issue id="OldTargetApi" severity="informational"/>
+
+    <!-- GradleDependency: dependencies are pinned to their last AGP-8.2-compatible versions.
+         Will update together with the AGP upgrade. -->
+    <issue id="GradleDependency" severity="informational"/>
+
+    <!-- InsecureBaseConfiguration: we explicitly allow cleartext traffic because the
+         AI backend URL is caregiver-configured and may be a local/private server using HTTP.
+         This is documented in network_security_config.xml. -->
+    <issue id="InsecureBaseConfiguration" severity="informational"/>
+
+    <!-- UnusedAttribute: android:dataExtractionRules is API 31+ only — intentional.
+         We also set android:fullBackupContent for pre-31 devices. Having both is correct
+         multi-API-version backup configuration; older devices simply ignore the new attribute. -->
+    <issue id="UnusedAttribute" severity="informational"/>
+
+    <!-- BatteryLife / REQUEST_IGNORE_BATTERY_OPTIMIZATIONS: this is a health-and-safety app
+         for dementia patients. The "timed listening" foreground service needs to run reliably
+         without being killed by Doze. Play Store policy permits this for assistive/safety apps.
+         The permission is declared in the manifest and disclosed in the privacy policy. -->
+    <issue id="BatteryLife" severity="informational"/>
+</lint>

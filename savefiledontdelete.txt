@@ -1,0 +1,1 @@
+& "$env:JAVA_HOME\\bin\\keytool.exe" -genkeypair -v -keystore my-upload-key.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload

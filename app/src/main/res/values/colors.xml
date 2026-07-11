@@ -1,0 +1,29 @@
+<resources>
+    <!-- Legacy Material palette — kept for any remaining references -->
+    <color name="purple_500">#6200EE</color>
+    <color name="purple_700">#3700B3</color>
+    <color name="teal_200">#03DAC5</color>
+    <color name="teal_700">#018786</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+
+    <!-- MomCompanion design system -->
+    <color name="mc_accent">#7C4DFF</color>
+    <color name="mc_accent_dark">#5C35CC</color>
+    <color name="mc_talk">#00C896</color>
+    <color name="mc_talk_dark">#00A07A</color>
+    <color name="mc_danger">#FF4757</color>
+    <color name="mc_danger_dark">#CC3846</color>
+    <color name="mc_vip_gold">#FF9500</color>
+    <color name="mc_vip_gold_dark">#CC7700</color>
+    <color name="mc_text_primary">#1A1A2E</color>
+    <color name="mc_text_secondary">#666688</color>
+    <color name="mc_text_hint">#999AB3</color>
+    <color name="mc_card_bg">#FFFFFF</color>
+    <color name="mc_input_bg">#F0EBF8</color>
+    <color name="mc_secondary_btn">#EEEAF7</color>
+    <color name="mc_divider">#E8E0FF</color>
+    <color name="mc_bg_top">#F3EFFF</color>
+    <color name="mc_bg_bottom">#FFF0F7</color>
+    <color name="mc_listening_blue">#1565C1</color>
+</resources>

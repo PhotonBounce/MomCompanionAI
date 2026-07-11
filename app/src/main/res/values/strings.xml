@@ -1,0 +1,46 @@
+<resources>
+    <string name="rules_input_content_desc">Rules input field for caregiver instructions</string>
+    <string name="rules_input_hint">Enter rules or notes for the AI companion</string>
+    <string name="save_button_content_desc">Save caregiver rules</string>
+    <string name="reset_button_content_desc">Reset all rules to default</string>
+    <string name="test_button_content_desc">Test AI conversation with current rules</string>
+    <string name="text_size_spinner_content_desc">Select text size for better readability</string>
+    <string name="app_name">Friendai</string>
+    <string name="privacy_notice">Privacy Notice: This app uses the microphone for speech recognition — when Mom taps Talk, or during a caregiver-set always-listening window (shown by a visible notification, stopped automatically). No conversations are stored or shared. No personal data is sent to third parties except the secure AI backend you configure. See our privacy policy for details.</string>
+    <string name="listening_mode_label">Always-listening window (no button press needed):</string>
+    <string name="listening_mode_off">Off (push-to-talk only)</string>
+    <plurals name="listening_mode_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+    <string name="help_contact">Help / Contact</string>
+    <string name="talk">Talk</string>
+    <string name="fun">Fun</string>
+    <string name="caregiver_rules">Caregiver Rules</string>
+    <string name="device_check">Device Check</string>
+    <string name="clear_conversation">Clear Conversation</string>
+    <string name="call_caregiver">Call Caregiver</string>
+    <string name="call">Call</string>
+    <string name="done">Done</string>
+    <string name="save">Save</string>
+    <string name="reset_rules">Reset Rules</string>
+    <string name="test_local_rules">Test Local Rules</string>
+    <string name="test_ai_backend">Test AI Backend</string>
+    <string name="first_setup">First Setup</string>
+    <string name="caregiver_settings">Caregiver Settings</string>
+    <string name="rules_prompt">Rules Prompt</string>
+    <string name="mom_profile_notes">Mom Profile Notes</string>
+    <string name="basic_vocabulary">Basic Vocabulary (English / Russian)</string>
+    <string name="prompt_topics">Prompt Topics (one per line, e.g. Moscow, cats, flowers)</string>
+    <string name="pin">PIN</string>
+    <string name="caregiver_name">Caregiver Name</string>
+    <string name="caregiver_phone">Caregiver Phone</string>
+    <string name="ai_backend_url">AI Backend URL</string>
+    <string name="ai_backend_token">AI Backend Token</string>
+    <string name="test_message">Test Message</string>
+    <string name="no_test_run">No test run yet.</string>
+    <string name="settings_saved">Settings saved</string>
+    <string name="saved_first_setup">Saved. First setup complete.</string>
+    <string name="pin_too_short">PIN must be at least 4 digits.</string>
+    <string name="listening_banner">🎙 I\'m listening — just talk to me</string>
+</resources>

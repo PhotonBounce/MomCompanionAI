@@ -1,0 +1,52 @@
+Friendai is a compassionate AI companion built for seniors, Alzheimer's and dementia patients, and anyone who cannot operate a phone — because with Friendai, there is nothing to operate.
+
+🎙️ NO BUTTONS. JUST TALK.
+Open the app and it's already listening. Mom simply speaks — Friendai hears her, answers out loud, and shows the conversation in large, easy-to-read text. No taps, no menus, no confusion. A gentle voice greeting tells her the companion is there: "Hello! I'm here and listening. Just talk to me whenever you like."
+
+🤖 REAL AI — FREE, NO SERVER NEEDED
+Paste a free Gemini API key in Settings (get one at aistudio.google.com/apikey — no credit card) and the app upgrades from a basic rule-based engine to full Gemini 2.0 AI. Smart, warm, context-aware conversation — free forever on Google's generous tier.
+
+⏱️ ALWAYS THERE, HANDS-FREE
+• Listens for up to 12 hours at a time (caregiver-adjustable)
+• Asks a topic question 45 seconds after greeting, then checks in every 3 minutes
+• Speaks a check-in after silence: "Are you there? How are you feeling?"
+• Warns aloud before the listening window ends
+• Screen stays on and replies are visible even over the lock screen
+• Resumes listening automatically after a phone reboot — no caregiver action needed
+
+🌍 AUTO-BILINGUAL — ENGLISH AND RUSSIAN
+Friendai automatically detects whether she's speaking English or Russian mid-conversation and switches both recognition and the reply voice to match. No setting needed. Perfect for immigrant families and bilingual seniors.
+
+🧭 MEMORY & ORIENTATION HELP
+Ask "What day is it today?" or "What time is it?" and Friendai answers — even offline. It gently steers conversation toward the topics her family chose: childhood memories, favorite music, happy places.
+
+🚨 SAFETY BUILT IN
+Friendai recognises urgent situations — "help me", "I fell", "chest pain", possible phone scams — and instantly shows a large help screen, speaks the alert aloud, and offers a one-tap "Call Caregiver" button for anyone nearby.
+
+🔒 CAREGIVER CONTROLS (PIN-protected)
+The caregiver sets everything up once through a simple settings screen:
+• Companion personality rules and care instructions
+• Profile, hobbies, favourite topics, personal vocabulary
+• Emergency contact name and phone number
+• AI voice speed — Slow, Normal, or Fast
+• Listening window length (1–12 hours, or switch to push-to-talk mode)
+• Optional AI backend for richer, personalised responses
+A built-in Device Check screen verifies microphone, voice, battery settings, and listening status at a glance.
+
+📵 WORKS OFFLINE
+Companionship, orientation answers, and all safety responses work without internet. Richer AI conversation is available when connected.
+
+🔐 PRIVACY FIRST
+• No conversations stored on any server
+• Visible notification whenever listening is active
+• No advertising. No tracking. No data selling.
+• All personal data stays on the device.
+
+💎 FREE + VIP
+20 AI conversations per day free. VIP unlocks unlimited replies. Subscription via Google Play; cancel any time.
+
+Keywords: Alzheimer's care, dementia companion, hands-free voice assistant for elderly, senior AI companion, memory care, Russian-speaking seniors, caregiver tool, no buttons needed.
+
+---
+
+Whether your loved one lives alone, in memory care, or just needs company during the long hours between visits — Friendai is there, already listening, so they never feel forgotten.

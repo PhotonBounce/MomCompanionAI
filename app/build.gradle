@@ -1,0 +1,96 @@
+
+
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id("com.github.triplet.play") version "3.9.0"
+}
+
+apply from: "publish.gradle.kts"
+
+// Signing: reads keystore/friendai-upload.jks via keystore.properties at the repo root.
+// Both files are git-ignored. If keystore.properties is missing, release builds stay
+// unsigned (CI-friendly) — generate a keystore and the file to enable signing.
+def keystorePropsFile = rootProject.file("keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+
+android {
+    namespace 'com.friendai'
+    compileSdk 35
+    buildToolsVersion "35.0.0"
+
+    if (keystorePropsFile.exists()) {
+        signingConfigs {
+            release {
+                storeFile rootProject.file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId "com.friendai"
+        minSdk 24
+        targetSdk 35
+        versionCode 14
+        versionName "2.3"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        debug {
+            // No applicationIdSuffix — keeps package com.friendai for easy adb/emulator testing
+            versionNameSuffix "-debug"
+            debuggable true
+        }
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            if (keystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    testOptions {
+        animationsDisabled = true
+        unitTests.includeAndroidResources = true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+play {
+    serviceAccountCredentials.set(file("google-play-service-account.json"))
+    track.set("internal") // change to alpha/beta/production later
+}
+
+dependencies {
+    implementation "androidx.core:core-ktx:1.15.0"    // requires compileSdk 35; upgraded with AGP 8.3
+    implementation "com.google.android.material:material:1.12.0"
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    // Google Play Billing — 7.x is compatible with the current VipActivity API surface.
+    // 9.x has breaking changes that would require significant VipActivity refactor.
+    implementation 'com.android.billingclient:billing-ktx:7.1.1'
+
+    // AndroidX Test and Espresso for UI tests and screenshots
+    androidTestImplementation 'androidx.test:core:1.7.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:rules:1.7.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+    androidTestImplementation 'androidx.test.uiautomator:uiautomator:2.3.0'
+    testImplementation 'junit:junit:4.13.2'
+}

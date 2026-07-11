@@ -1,0 +1,20 @@
+<resources>
+    <style name="Theme.MomsAI" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/mc_accent</item>
+        <item name="colorPrimaryVariant">@color/mc_accent_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/mc_talk</item>
+        <item name="colorSecondaryVariant">@color/mc_talk_dark</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <!-- Gradient window background so all screens look polished by default -->
+        <item name="android:windowBackground">@drawable/bg_parallax</item>
+        <item name="android:windowAnimationStyle">@style/WindowAnim</item>
+        <!-- Remove the default button all-caps transform globally -->
+        <item name="android:textAllCaps">false</item>
+    </style>
+
+    <style name="WindowAnim" parent="@android:style/Animation.Activity">
+        <item name="android:windowEnterAnimation">@android:anim/fade_in</item>
+        <item name="android:windowExitAnimation">@android:anim/fade_out</item>
+    </style>
+</resources>

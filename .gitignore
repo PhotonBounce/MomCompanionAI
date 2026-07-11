@@ -1,0 +1,15 @@
+.gradle/
+build/
+app/build/
+local.properties
+
+backend/node_modules/
+backend/.env
+
+
+# Signing secrets - NEVER commit
+keystore.properties
+keystore/
+app/google-play-service-account.json
+*.jks
+key.properties

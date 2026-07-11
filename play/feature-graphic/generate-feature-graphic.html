@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Friendai — Feature Graphic Generator (1024×500)</title>
+<style>
+  body { margin: 0; background: #111; display: flex; flex-direction: column; align-items: center; padding: 24px; font-family: sans-serif; color: #fff; }
+  h2 { margin: 0 0 12px; font-size: 14px; color: #888; }
+  canvas { border: 2px solid #333; border-radius: 4px; }
+  button { margin-top: 16px; padding: 10px 32px; background: #2E7D32; color: #fff; border: none; border-radius: 8px; font-size: 15px; cursor: pointer; }
+  button:hover { background: #388E3C; }
+</style>
+</head>
+<body>
+<h2>Google Play Feature Graphic — 1024 × 500 px · Open in browser, screenshot or use Download button</h2>
+<canvas id="c" width="1024" height="500"></canvas>
+<button onclick="download()">⬇ Download PNG</button>
+<script>
+const c = document.getElementById('c');
+const ctx = c.getContext('2d');
+const W = 1024, H = 500;
+
+/* ── Background gradient ──────────────────────────────────────── */
+const bg = ctx.createLinearGradient(0, 0, W, H);
+bg.addColorStop(0,   '#0a1a0a');
+bg.addColorStop(0.5, '#0d2014');
+bg.addColorStop(1,   '#0a1a0a');
+ctx.fillStyle = bg;
+ctx.fillRect(0, 0, W, H);
+
+/* ── Starfield ────────────────────────────────────────────────── */
+const rng = (seed => () => { seed = (seed * 1664525 + 1013904223) & 0xffffffff; return (seed >>> 0) / 0xffffffff; })(42);
+for (let i = 0; i < 160; i++) {
+  const x = rng() * W, y = rng() * H, r = rng() * 1.5 + 0.2;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(255,255,255,${0.15 + rng() * 0.55})`;
+  ctx.fill();
+}
+
+/* ── Left glow orb ────────────────────────────────────────────── */
+const glow1 = ctx.createRadialGradient(200, 220, 0, 200, 220, 300);
+glow1.addColorStop(0,   'rgba(46,125,50,0.35)');
+glow1.addColorStop(0.5, 'rgba(46,125,50,0.10)');
+glow1.addColorStop(1,   'rgba(46,125,50,0.00)');
+ctx.fillStyle = glow1;
+ctx.fillRect(0, 0, W, H);
+
+/* ── Right accent orb ─────────────────────────────────────────── */
+const glow2 = ctx.createRadialGradient(860, 280, 0, 860, 280, 250);
+glow2.addColorStop(0,   'rgba(76,175,80,0.22)');
+glow2.addColorStop(1,   'rgba(76,175,80,0.00)');
+ctx.fillStyle = glow2;
+ctx.fillRect(0, 0, W, H);
+
+/* ── Decorative circle rings (subtle) ────────────────────────── */
+function ring(cx, cy, r, alpha) {
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.strokeStyle = `rgba(76,175,80,${alpha})`;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+ring(200, 220, 160, 0.08);
+ring(200, 220, 220, 0.05);
+ring(860, 280, 120, 0.07);
+
+/* ── Main headline ────────────────────────────────────────────── */
+ctx.save();
+ctx.shadowColor = 'rgba(76,175,80,0.6)';
+ctx.shadowBlur = 32;
+ctx.fillStyle = '#ffffff';
+ctx.font = 'bold 74px "Arial", sans-serif';
+ctx.textAlign = 'center';
+ctx.fillText('Friendai', W / 2, 195);
+ctx.restore();
+
+/* ── Tagline ──────────────────────────────────────────────────── */
+ctx.fillStyle = '#81C784';
+ctx.font = '26px "Arial", sans-serif';
+ctx.textAlign = 'center';
+ctx.fillText('AI Companion for Seniors · Hands-Free · Always Listening', W / 2, 255);
+
+/* ── Feature pills ────────────────────────────────────────────── */
+const pills = [
+  '🎤 Hands-Free Listening',
+  '🌙 Timed Watch Mode',
+  '🆘 Emergency Alerts',
+  '🌍 English & Russian',
+  '🛡 Privacy-First',
+];
+const pillW = 162, pillH = 38, gap = 14;
+const totalW = pills.length * pillW + (pills.length - 1) * gap;
+let px = (W - totalW) / 2;
+const py = 310;
+
+pills.forEach(text => {
+  /* pill background */
+  ctx.save();
+  ctx.beginPath();
+  const r = pillH / 2;
+  ctx.moveTo(px + r, py); ctx.lineTo(px + pillW - r, py);
+  ctx.arc(px + pillW - r, py + r, r, -Math.PI/2, Math.PI/2);
+  ctx.lineTo(px + r, py + pillH);
+  ctx.arc(px + r, py + r, r, Math.PI/2, -Math.PI/2);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(46,125,50,0.28)';
+  ctx.strokeStyle = 'rgba(76,175,80,0.5)';
+  ctx.lineWidth = 1;
+  ctx.fill();
+  ctx.stroke();
+  /* pill text */
+  ctx.fillStyle = '#e8f5e9';
+  ctx.font = '13px "Arial", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, px + pillW / 2, py + 25);
+  ctx.restore();
+  px += pillW + gap;
+});
+
+/* ── Bottom tagline ───────────────────────────────────────────── */
+ctx.fillStyle = 'rgba(255,255,255,0.35)';
+ctx.font = '17px "Arial", sans-serif';
+ctx.textAlign = 'center';
+ctx.fillText('Designed for dementia patients, Alzheimer\'s care, and aging with dignity.', W / 2, 428);
+
+/* ── App icon circle (top-left accent) ───────────────────────── */
+ctx.save();
+ctx.beginPath();
+ctx.arc(72, 72, 38, 0, Math.PI * 2);
+ctx.fillStyle = 'rgba(46,125,50,0.55)';
+ctx.strokeStyle = 'rgba(76,175,80,0.7)';
+ctx.lineWidth = 2;
+ctx.fill();
+ctx.stroke();
+ctx.font = '32px serif';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillStyle = '#fff';
+ctx.fillText('🤝', 72, 72);
+ctx.restore();
+
+/* ── "For Android" badge ─────────────────────────────────────── */
+ctx.save();
+ctx.beginPath();
+roundRect(ctx, W - 150, H - 58, 130, 36, 8);
+ctx.fillStyle = 'rgba(255,255,255,0.08)';
+ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+ctx.lineWidth = 1;
+ctx.fill();
+ctx.stroke();
+ctx.font = '13px "Arial", sans-serif';
+ctx.fillStyle = 'rgba(255,255,255,0.6)';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillText('Google Play', W - 85, H - 40);
+ctx.restore();
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function download() {
+  const a = document.createElement('a');
+  a.download = 'feature-graphic-1024x500.png';
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+</script>
+</body>
+</html>

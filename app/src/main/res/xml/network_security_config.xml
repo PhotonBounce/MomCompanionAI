@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Network Security Configuration for Friendai.
+
+    We allow cleartext (HTTP) traffic because the AI backend URL is caregiver-configured
+    and may point to a local server or a private network endpoint that uses HTTP.
+    Caregivers should use an HTTPS endpoint in production — the app will work either way.
+
+    This config keeps the same permissive policy as usesCleartextTraffic="true" but puts
+    it in an explicit, reviewable file rather than a blanket manifest flag.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <!-- Trust system CAs for HTTPS to user-configured AI backend -->
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>

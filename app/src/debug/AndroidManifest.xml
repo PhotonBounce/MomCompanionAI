@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-only manifest overlay.
+  Exports secondary activities so `adb shell am start` can launch them
+  directly for screenshot capture / manual QA.
+  These overrides do NOT appear in release builds.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <activity
+            android:name="com.friendai.RulesActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+        <activity
+            android:name="com.friendai.PinActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+        <activity
+            android:name="com.friendai.EmergencyActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+        <activity
+            android:name="com.friendai.TroubleshootingActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+        <activity
+            android:name="com.friendai.VipActivity"
+            android:exported="true"
+            tools:replace="android:exported" />
+    </application>
+
+</manifest>

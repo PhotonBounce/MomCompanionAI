@@ -1,0 +1,6 @@
+v2.3 — 300+ conversation topics, richer support
+
+• 150+ new bilingual handlers: aging grief, death thoughts, claustrophobia, garden nostalgia, name-forgetting, congestion, bad days, and more.
+• Deeper emotional care: existential comfort, memory reassurance, physical symptom guidance.
+• All responses in English and Russian — automatically detected.
+• Hands-free listening — no buttons, just speak.
