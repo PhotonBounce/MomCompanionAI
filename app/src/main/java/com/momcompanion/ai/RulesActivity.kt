@@ -18,6 +18,7 @@ class RulesActivity : Activity() {
         return TextView(this).apply {
             text = "Privacy Notice: This app uses the microphone for speech recognition — either when Mom taps Talk, or during a caregiver-set listening window (shown by an ongoing notification). Conversation text is sent to Google Gemini AI (if you add a key below) or your custom backend — only if configured. Nothing is stored. No ads, no tracking."
             textSize = if (isTabletLayout) 18f else 16f
+            setTextColor(UiStyle.TEXT_SEC)
             setPadding(0, dp(10), 0, dp(10))
         }
     }
@@ -85,6 +86,7 @@ class RulesActivity : Activity() {
         val textSizeLabel = TextView(this).apply {
             text = "Text Size:"
             textSize = userTextSize
+            setTextColor(UiStyle.TEXT_PRI)
             setPadding(0, dp(10), 0, dp(4))
         }
         textSizeSpinner = android.widget.Spinner(this).apply {
@@ -101,6 +103,7 @@ class RulesActivity : Activity() {
         val ttsSpeedLabel = TextView(this).apply {
             text = "AI Voice Speed:"
             textSize = userTextSize
+            setTextColor(UiStyle.TEXT_PRI)
             setPadding(0, dp(10), 0, dp(4))
         }
         ttsSpeedSpinner = android.widget.Spinner(this).apply {
@@ -121,14 +124,17 @@ class RulesActivity : Activity() {
         val listeningHoursLabel = TextView(this).apply {
             text = "Always-listening window (no button press needed):"
             textSize = userTextSize
+            setTextColor(UiStyle.TEXT_PRI)
             setPadding(0, dp(10), 0, dp(4))
         }
         val listeningHoursDescription = TextView(this).apply {
-            text = "If Mom can't press Talk, choose how many hours the app should actively " +
-                "listen and respond on its own, starting when she opens the app. Choose " +
-                "'Off' to keep push-to-talk only. Maximum 12 hours; the app stops listening " +
-                "automatically when the timer ends."
+            text = "If Mom can't press Talk, turn this on — the app then listens and replies " +
+                "on its own, no button needed, starting when she opens it. It keeps going " +
+                "hands-free all day (and restarts itself if the tablet reboots) until you turn " +
+                "it off here. The hours you pick just set how often it refreshes in the " +
+                "background. Choose 'Off' to keep push-to-talk only."
             textSize = userTextSize - 2f
+            setTextColor(UiStyle.TEXT_SEC)
             setPadding(0, 0, 0, dp(6))
         }
         listeningHoursSpinner = android.widget.Spinner(this).apply {
@@ -151,6 +157,7 @@ class RulesActivity : Activity() {
             }
             textSize = userTextSize + 2f
             gravity = Gravity.CENTER
+            setTextColor(UiStyle.TEXT_PRI)
             setPadding(0, dp(10), 0, dp(10))
             contentDescription = "Status: $text"
         }
@@ -209,6 +216,7 @@ class RulesActivity : Activity() {
         testResultText = TextView(this).apply {
             text = "No test run yet."
             textSize = userTextSize + 2f
+            setTextColor(UiStyle.TEXT_PRI)
             setPadding(0, dp(10), 0, dp(10))
             contentDescription = "Test result"
         }
@@ -535,6 +543,7 @@ class RulesActivity : Activity() {
         return TextView(this).apply {
             text = "Get a FREE key (no credit card): go to aistudio.google.com/apikey → Create API key → paste it here. Once saved, the app uses real Gemini AI instead of the basic offline engine."
             textSize = if (isTabletLayout) 17f else 15f
+            setTextColor(UiStyle.TEXT_SEC)
             setPadding(0, 0, 0, dp(6))
         }
     }
@@ -548,6 +557,8 @@ class RulesActivity : Activity() {
             inputType = InputType.TYPE_CLASS_TEXT or
                 InputType.TYPE_TEXT_FLAG_MULTI_LINE or
                 InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            // Explicit dark text on a light rounded field — never rely on theme defaults.
+            UiStyle.styleEditText(this)
         }
     }
 
@@ -557,6 +568,7 @@ class RulesActivity : Activity() {
             textSize = if (isTabletLayout) 20f else 18f
             inputType = type
             setSingleLine(true)
+            UiStyle.styleEditText(this)
         }
     }
 
@@ -565,6 +577,7 @@ class RulesActivity : Activity() {
             this.text = text
             textSize = if (isTabletLayout) 20f else 18f
             typeface = Typeface.DEFAULT_BOLD
+            setTextColor(UiStyle.TEXT_PRI)
             setPadding(0, dp(14), 0, dp(6))
         }
     }

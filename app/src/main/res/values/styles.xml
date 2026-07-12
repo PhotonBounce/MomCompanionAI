@@ -1,11 +1,29 @@
-<resources>
-    <style name="Theme.MomsAI" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!--
+        Light (NOT DayNight) on purpose. The window background below is a fixed light
+        gradient that never changes with the system dark-mode setting. Under a DayNight
+        parent, a tablet in night mode resolved default text colors to near-white, which
+        rendered every un-coloured label invisible on that light background (only text
+        that set an explicit colour, like the purple title, showed up). Pinning to Light
+        plus explicit dark text colours and disabling force-dark keeps text readable no
+        matter how the device's dark mode is set.
+    -->
+    <style name="Theme.MomsAI" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/mc_accent</item>
         <item name="colorPrimaryVariant">@color/mc_accent_dark</item>
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/mc_talk</item>
         <item name="colorSecondaryVariant">@color/mc_talk_dark</item>
         <item name="colorOnSecondary">@color/white</item>
+        <!-- Force readable dark text on the always-light background, independent of the
+             device's system dark-mode setting. -->
+        <item name="android:textColorPrimary">@color/mc_text_primary</item>
+        <item name="android:textColorSecondary">@color/mc_text_secondary</item>
+        <item name="android:textColorTertiary">@color/mc_text_secondary</item>
+        <item name="android:textColorHint">@color/mc_text_hint</item>
+        <item name="android:textColor">@color/mc_text_primary</item>
+        <!-- Stop the OS "force dark" pass from inverting our intentionally-light UI. -->
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
         <!-- Gradient window background so all screens look polished by default -->
         <item name="android:windowBackground">@drawable/bg_parallax</item>
         <item name="android:windowAnimationStyle">@style/WindowAnim</item>

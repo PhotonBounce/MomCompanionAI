@@ -25,10 +25,13 @@ import java.util.Locale
  * Caregiver-configurable "timed listening" mode.
  *
  * Push-to-talk doesn't work for everyone — some people (especially dementia patients)
- * cannot reliably operate a button. This foreground service lets a caregiver opt into a
- * window (up to 12 hours, set in Caregiver Settings) during which the app listens for
- * Mom on its own, replies through the same real AI pipeline as the Talk button
- * ([AiClientFactory] / [CompanionEngine]), and stops automatically when the timer ends.
+ * cannot reliably operate a button. This foreground service lets a caregiver opt into
+ * hands-free mode during which the app listens for Mom on its own and replies through the
+ * same real AI pipeline as the Talk button ([AiClientFactory] / [CompanionEngine]). The
+ * caregiver-set hours (1-12) are the length of one listening window; when a window elapses
+ * the service auto-renews it (see [renewWindow]) so the companion keeps going all day
+ * instead of falling silent. It stops only when the caregiver turns it off in Settings
+ * (or the mic permission is revoked / recognition becomes unavailable).
  *
  * Lessons learned from the old always-on [CompanionService] (deleted): never echo the
  * user's own words back as a "reply", always pause the recognizer while TTS is speaking
@@ -129,7 +132,7 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
             acquire(durationMillis + 5 * 60 * 1000L)
         }
 
-        // Start the idle check-in timer — if nobody talks for 15 minutes, gently prompt Mom.
+        // Start the idle check-in timer — if nobody talks for a few minutes, gently prompt Mom.
         resetIdleCheckIn()
 
         if (!listening && !stopped) {
@@ -168,7 +171,7 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
 
     /**
      * Resets the idle check-in timer. Called on every incoming user message and on start
-     * so the 15-minute silence clock always counts from the last real conversation.
+     * so the silence clock always counts from the last real conversation.
      */
     private fun resetIdleCheckIn() {
         handler.removeCallbacks(idleCheckInRunnable)
@@ -473,7 +476,7 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
     }
 
     private fun handleUserMessage(userMsg: String) {
-        // Mom spoke — reset the 15-minute idle check-in timer.
+        // Mom spoke — reset the idle check-in timer.
         resetIdleCheckIn()
         // Respect the same free-tier daily limit as push-to-talk so timed listening can't
         // silently bypass the monetization gate. VIP users are always unlimited.
