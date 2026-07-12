@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] - 2026-07-12
+### Fixed — engine quality (found via the emulator)
+- **Uppercase-letter trigger phrases could never match.** Two reminiscence handlers had `containsAny(...)` trigger strings containing capital letters ("periodical Canterbury", "best Sunday hat"), but user input is lowercased before matching (`message.lowercase()`) and `containsAny` compares case-sensitively — so those phrases were dead code. "a good mahogany periodical Canterbury for the drawing room for the gazette holding" fell through to the generic "every word you say matters to me" fallback instead of the warm object-specific reply. Trigger phrases are now lowercase to match the normalized input; reply text keeps its proper capitalization. Emulator suite: 2944/2944 passing (was 2943/2944).
+
 ## [2.3] - 2026-06-14
 ### Added
 - **Verbal emulator test harness** (`CompanionEngineEmulatorTest`) — runs the offline engine on the JVM (no device) so replies/escalations can be inspected and regression-tested. 18 tests.
