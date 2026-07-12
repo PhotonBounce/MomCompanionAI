@@ -60,10 +60,11 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
      */
     private var wakeLock: PowerManager.WakeLock? = null
 
-    private val stopRunnable = Runnable { stopSelfCleanly("timer ended") }
+    /** Fires when a listening window elapses; auto-renews so the companion never goes silent. */
+    private val stopRunnable = Runnable { renewWindow() }
     private val restartListeningRunnable = Runnable { startListeningCycle() }
-    /** Fires 5 minutes before the listening window ends — gives Mom a spoken heads-up. */
-    private val endWindowWarningRunnable = Runnable { speakEndOfWindowWarning() }
+    /** Length of one listening window; the window auto-renews so hands-free runs all day. */
+    private var windowMillis: Long = 0L
     /** Fires when nobody has spoken for [IDLE_CHECK_IN_DELAY_MS] — gently prompts Mom. */
     private val idleCheckInRunnable = Runnable { speakIdleCheckIn() }
 
@@ -115,6 +116,7 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
         }
 
         val durationMillis = hours * 60L * 60L * 1000L
+        windowMillis = durationMillis
         handler.removeCallbacks(stopRunnable)
         handler.postDelayed(stopRunnable, durationMillis)
 
@@ -125,13 +127,6 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
         val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
         wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "friendai:TimedListening").apply {
             acquire(durationMillis + 5 * 60 * 1000L)
-        }
-
-        // Schedule a spoken warning 5 minutes before the window ends.
-        handler.removeCallbacks(endWindowWarningRunnable)
-        val warningAt = durationMillis - WARNING_BEFORE_END_MS
-        if (warningAt > 0) {
-            handler.postDelayed(endWindowWarningRunnable, warningAt)
         }
 
         // Start the idle check-in timer — if nobody talks for 15 minutes, gently prompt Mom.
@@ -153,18 +148,22 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
     }
 
     /**
-     * Spoken warning delivered 5 minutes before the caregiver-set window expires. Tells
-     * Mom the app is about to stop listening so she isn't confused by sudden silence.
+     * Called when a listening window elapses. Instead of going silent — which left Mom with
+     * no companion and no button until someone reopened the app — we quietly start another
+     * window so hands-free listening continues all day. The caregiver stops it from Settings.
      */
-    private fun speakEndOfWindowWarning() {
+    private fun renewWindow() {
         if (stopped) return
-        val text = if (currentRecognitionLocale.language == "ru")
-            "Я перестану слушать примерно через пять минут. Скажите что-нибудь, если хотите поговорить!"
-        else
-            "I will stop listening in about five minutes. Say something if you'd like to chat before I go!"
-        speak(text) {
-            scheduleRestart(POST_REPLY_DELAY_MS)
+        handler.removeCallbacks(stopRunnable)
+        handler.postDelayed(stopRunnable, windowMillis)
+        // Re-arm the bounded wake lock for the next window so the loop survives screen-off.
+        runCatching { wakeLock?.release() }
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "friendai:TimedListening").apply {
+            acquire(windowMillis + 5 * 60 * 1000L)
         }
+        resetIdleCheckIn()
+        if (!listening) scheduleRestart(POST_REPLY_DELAY_MS)
     }
 
     /**
@@ -450,9 +449,12 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
                 // freely without any setting — the app follows them.
                 val cyrillicCount = text.count { it in 'Ѐ'..'ӿ' }
                 val latinCount = text.count { it.isLetter() && it !in 'Ѐ'..'ӿ' }
+                // Russian is sticky: any Cyrillic keeps Russian; only a clear English word
+                // (>=4 Latin letters, no Cyrillic) switches to English. Keeps a Russian speaker
+                // from being flipped to English by one mis-recognised token.
                 currentRecognitionLocale = when {
-                    cyrillicCount > latinCount -> Locale("ru", "RU")
-                    latinCount > 0 && cyrillicCount == 0 -> Locale.US
+                    cyrillicCount > 0 -> Locale("ru", "RU")
+                    latinCount >= 4 -> Locale.US
                     else -> currentRecognitionLocale // keep current if ambiguous / no letters
                 }
                 handleUserMessage(text)
@@ -614,7 +616,7 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
         // plain Notification.Builder(context, channelId) requires API 26+.
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Friendai is listening")
-            .setContentText("Listening for up to $hours hour${if (hours == 1) "" else "s"} — no button press needed. Tap to open.")
+            .setContentText("Listening — no button press needed. Tap to open.")
             .setSmallIcon(R.drawable.ic_notification_mic)
             .setOngoing(true)
             .setContentIntent(contentIntent)
@@ -631,8 +633,6 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
         private const val POST_REPLY_DELAY_MS = 600L
         private const val PUSH_TO_TALK_YIELD_MS = 20_000L
         private const val MAX_RECENT_TURNS = 6
-        /** Spoken warning fires this many ms before the listening window expires. */
-        private const val WARNING_BEFORE_END_MS = 5 * 60 * 1000L
         /**
          * Gentle conversation prompt fires after this much silence. Kept short (3 min):
          * the companion must INITIATE conversation, not wait for it — the target user

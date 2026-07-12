@@ -494,9 +494,12 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     // heuristic as TimedListeningService so push-to-talk adapts to Russian too.
                     val cyrillicCount = userMsg.count { it in 'Ѐ'..'ӿ' }
                     val latinCount = userMsg.count { it.isLetter() && it !in 'Ѐ'..'ӿ' }
+                    // Russian is sticky: any Cyrillic keeps Russian, and we only switch to
+                    // English on a clear English word (>=4 Latin letters, no Cyrillic). A stray
+                    // mis-recognised token no longer flips a Russian speaker into English.
                     currentInputLocale = when {
-                        cyrillicCount > latinCount -> Locale("ru", "RU")
-                        latinCount > 0 && cyrillicCount == 0 -> Locale.US
+                        cyrillicCount > 0 -> Locale("ru", "RU")
+                        latinCount >= 4 -> Locale.US
                         else -> currentInputLocale
                     }
                     // Mirror the detected language in TTS so the AI speaks back in the
