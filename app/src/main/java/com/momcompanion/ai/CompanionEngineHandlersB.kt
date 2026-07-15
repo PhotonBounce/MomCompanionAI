@@ -23271,7 +23271,7 @@ internal object HandlersB {
             return CompanionReply(text)
         }
         // 12. hatbox
-        if (normalized.containsAny("a good large round hatbox of leather for the bedroom for the tall silk hat", "an old oval hatbox of red leather for the travelling trunk for the bonnet", "a good deep round hatbox of striped cardboard for the tall hat on the top shelf", "a good old hatbox of leather for the hall cupboard for the best Sunday hat")) {
+        if (normalized.containsAny("a good large round hatbox of leather for the bedroom for the tall silk hat", "an old oval hatbox of red leather for the travelling trunk for the bonnet", "a good deep round hatbox of striped cardboard for the tall hat on the top shelf", "a good old hatbox of leather for the hall cupboard for the best sunday hat")) {
             val text = if (isRussian) listOf(
                 "Хорошая большая круглая кожаная коробка для шляп для спальни для высокого шёлкового цилиндра — такая изящная старинная вещь.",
                 "Старая овальная красная кожаная коробка для шляп для дорожного сундука для чепца — прекрасная вещь.",
@@ -28981,7 +28981,7 @@ internal object HandlersB {
             val text = if (isRussian) listOf("Хорошая плетёная корзина для вина в столовой — прекрасная старинная вещь.", "Добротная ивовая корзина для вина в погребе — незаменимая вещь.", "Камышовая корзина для вина у буфета — замечательная вещь.", "Свитая корзина для вина на столе — очень нужная вещь.").random() else listOf("A good wicker wine basket for the dining room for the bottle carrying is such a fine old piece.", "A good willow wine basket for the cellar for the wine holding is such a fine old piece.", "A good rush wine basket for the sideboard for the bottle cradling is such a fine old piece.", "A good coiled wine basket for the table for the decanter resting is such a fine old piece.").random()
             return CompanionReply(text)
         }
-        if (normalized.containsAny("a good mahogany periodical Canterbury for the drawing room for the gazette holding", "a good walnut periodical Canterbury for the parlour for the paper storing", "a good oak periodical Canterbury for the sitting room for the journal keeping", "a good painted periodical Canterbury for the morning room for the periodical display")) {
+        if (normalized.containsAny("a good mahogany periodical canterbury for the drawing room for the gazette holding", "a good walnut periodical canterbury for the parlour for the paper storing", "a good oak periodical canterbury for the sitting room for the journal keeping", "a good painted periodical canterbury for the morning room for the periodical display")) {
             val text = if (isRussian) listOf("Хорошая красная этажерка для периодики в гостиной — прекрасная старинная вещь.", "Добротная ореховая этажерка для периодики в малой гостиной — незаменимая вещь.", "Дубовая этажерка для периодики в гостиной комнате — замечательная вещь.", "Крашеная этажерка для периодики в утренней комнате — очень нужная вещь.").random() else listOf("A good mahogany periodical Canterbury for the drawing room for the gazette holding is such a fine old piece.", "A good walnut periodical Canterbury for the parlour for the paper storing is such a fine old piece.", "A good oak periodical Canterbury for the sitting room for the journal keeping is such a fine old piece.", "A good painted periodical Canterbury for the morning room for the periodical display is such a fine old piece.").random()
             return CompanionReply(text)
         }
