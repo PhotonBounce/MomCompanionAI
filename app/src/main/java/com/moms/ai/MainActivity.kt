@@ -145,7 +145,14 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             animate().alpha(1f).setDuration(1200).setStartDelay(300).start()
         }
 
-        showOnboardingIfNeeded(this)
+        // Apply the saved language preference up front so BOTH speech recognition and TTS
+        // start in the right language (Russian for our primary users) from the first moment,
+        // instead of only after the first spoken word. Set in Caregiver Settings → Language.
+        if (getSharedPreferences("onboarding", MODE_PRIVATE).getString("language", "English") == "Russian") {
+            currentInputLocale = Locale("ru", "RU")
+        }
+        // Single, clean setup flow: First Setup (RulesActivity) now owns the language choice,
+        // so the old multi-step popup wizard that collided with it has been removed.
         openFirstRunCaregiverSetupIfNeeded()
         showAiKeyHintIfNeeded()
 
@@ -163,6 +170,15 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         super.onResume()
         // Re-check in case the caregiver just changed the setting in RulesActivity.
         applyTimedListeningPreference()
+        // Apply the language immediately if the caregiver just switched it to Russian in
+        // Settings, so push-to-talk uses it without needing an app restart. (We only upgrade
+        // to Russian here; we don't force English back, to avoid overriding a mid-conversation
+        // auto-switch.)
+        if (getSharedPreferences("onboarding", MODE_PRIVATE).getString("language", "English") == "Russian" &&
+            currentInputLocale.language != "ru") {
+            currentInputLocale = Locale("ru", "RU")
+            if (ttsReady) tts?.setLanguage(currentInputLocale)
+        }
     }
 
     /**
@@ -376,8 +392,23 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             val result = tts?.setLanguage(currentInputLocale)
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 ttsReady = false
-                Toast.makeText(this, "TTS language not supported. Please install TTS data.", Toast.LENGTH_LONG).show()
-                conversationText.text = "TTS language not supported. Please install TTS data."
+                // Common on tablets that ship English-only: the Russian voice isn't installed,
+                // so nothing is spoken and it looks like "Russian doesn't work". Guide the
+                // caregiver to install the voice data (once), with a clear bilingual message.
+                val isRu = currentInputLocale.language == "ru"
+                val msg = if (isRu)
+                    "Русский голос не установлен на планшете. Открываю установку голосовых данных — выберите «Русский» и установите."
+                else
+                    "The voice for this language isn't installed on the tablet. Opening the voice-data installer — pick this language and install it."
+                conversationText.text = msg
+                Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+                val prefs = getSharedPreferences("onboarding", MODE_PRIVATE)
+                if (!prefs.getBoolean("tts_install_prompted", false)) {
+                    prefs.edit().putBoolean("tts_install_prompted", true).apply()
+                    runCatching {
+                        startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA))
+                    }
+                }
             } else {
                 // Apply the caregiver-configured speech rate (slow / normal / fast).
                 val settings = CaregiverRulesStore(this).load()
@@ -494,9 +525,12 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     // heuristic as TimedListeningService so push-to-talk adapts to Russian too.
                     val cyrillicCount = userMsg.count { it in 'Ѐ'..'ӿ' }
                     val latinCount = userMsg.count { it.isLetter() && it !in 'Ѐ'..'ӿ' }
+                    // Russian is sticky: any Cyrillic keeps Russian, and we only switch to
+                    // English on a clear English word (>=4 Latin letters, no Cyrillic). A stray
+                    // mis-recognised token no longer flips a Russian speaker into English.
                     currentInputLocale = when {
-                        cyrillicCount > latinCount -> Locale("ru", "RU")
-                        latinCount > 0 && cyrillicCount == 0 -> Locale.US
+                        cyrillicCount > 0 -> Locale("ru", "RU")
+                        latinCount >= 4 -> Locale.US
                         else -> currentInputLocale
                     }
                     // Mirror the detected language in TTS so the AI speaks back in the
@@ -692,69 +726,4 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
     }
 
-    /**
-     * Shows the onboarding dialog on first launch.
-     */
-    private fun showOnboardingIfNeeded(context: Context) {
-        val prefs = context.getSharedPreferences("onboarding", Context.MODE_PRIVATE)
-        val shown = prefs.getBoolean("shown", false)
-        if (!shown) {
-            AlertDialog.Builder(context)
-                .setTitle("Welcome to Friendai!")
-                .setMessage("This app helps you stay safe and connected.\n\n• Tap 'Talk' to speak with your AI companion.\n• The app can understand English and Russian.\n• Caregivers can set up rules, contacts, and PIN protection.\n• All conversations are private and secure.\n\nPress 'Get Started' to begin.")
-                .setPositiveButton("Get Started") { dialog, _ ->
-                    prefs.edit().putBoolean("shown", true).apply()
-                    dialog.dismiss()
-
-                    // Step 2: Language selection
-                    val languages = arrayOf("English", "Russian")
-                    AlertDialog.Builder(context)
-                        .setTitle("Choose your language")
-                        .setSingleChoiceItems(languages, 0) { _, which ->
-                            prefs.edit().putString("language", languages[which]).apply()
-                        }
-                        .setPositiveButton("Next") { d, _ ->
-                            d.dismiss()
-
-                            // Step 3: TTS Voice selection (simple demo: default or high contrast)
-                            val voices = arrayOf("Default", "High Contrast")
-                            AlertDialog.Builder(context)
-                                .setTitle("Choose voice style")
-                                .setSingleChoiceItems(voices, 0) { _, which ->
-                                    prefs.edit().putString("tts_voice", voices[which]).apply()
-                                }
-                                .setPositiveButton("Next") { dlg, _ ->
-                                    dlg.dismiss()
-
-                                    // Step 4: Family phrase entry
-                                    val input = android.widget.EditText(context)
-                                    input.hint = "e.g. 'I love you, Mom!'"
-                                    AlertDialog.Builder(context)
-                                        .setTitle("Add a family phrase")
-                                        .setMessage("Enter a phrase your AI companion can use to sound more familiar.")
-                                        .setView(input)
-                                        .setPositiveButton("Save") { phraseDialog, _ ->
-                                            val phrase = input.text.toString()
-                                            prefs.edit().putString("family_phrase", phrase).apply()
-                                            phraseDialog.dismiss()
-                                        }
-                                        .setNegativeButton("Skip") { phraseDialog, _ ->
-                                            phraseDialog.dismiss()
-                                        }
-                                        .show()
-                                }
-                                .setNegativeButton("Skip") { voiceDialog, _ ->
-                                    voiceDialog.dismiss()
-                                }
-                                .show()
-                        }
-                        .setNegativeButton("Skip") { langDialog, _ ->
-                            langDialog.dismiss()
-                        }
-                        .show()
-                }
-                .setCancelable(false)
-                .show()
-        }
-    }
 }
