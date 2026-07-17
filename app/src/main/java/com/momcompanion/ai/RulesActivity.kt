@@ -42,6 +42,8 @@ class RulesActivity : Activity() {
     private lateinit var textSizeSpinner: android.widget.Spinner
     private lateinit var listeningHoursSpinner: android.widget.Spinner
     private lateinit var ttsSpeedSpinner: android.widget.Spinner
+    private lateinit var languageSpinner: android.widget.Spinner
+    private lateinit var momNameInput: EditText
     private val listeningHoursOptions = listOf(0, 1, 2, 3, 4, 6, 8, 10, 12)
     /** Maps spinner position → TTS speech rate multiplier. Slow = 0.7, Normal = 1.0, Fast = 1.3. */
     private val ttsSpeedOptions = listOf(0.7f, 1.0f, 1.3f)
@@ -80,6 +82,27 @@ class RulesActivity : Activity() {
             gravity = Gravity.CENTER
             setTextColor(UiStyle.ACCENT)
             contentDescription = text
+        }
+
+        // Language: the single most important setting for our Russian-first families. It lives
+        // right here in Settings (not a separate popup) so the caregiver sets it where they
+        // expect. Persisted to the "onboarding" prefs that MainActivity and the listening
+        // service read to pick the speech-recognition + voice language.
+        val currentLanguage = prefs.getString("language", "English")
+        val languageLabel = TextView(this).apply {
+            text = "Language / Язык:"
+            textSize = userTextSize
+            setTextColor(UiStyle.TEXT_PRI)
+            setPadding(0, dp(10), 0, dp(4))
+        }
+        languageSpinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(
+                context,
+                android.R.layout.simple_spinner_dropdown_item,
+                listOf("English", "Русский (Russian)")
+            )
+            setSelection(if (currentLanguage == "Russian") 1 else 0)
+            contentDescription = "Language selector"
         }
 
         // Text size option
@@ -189,6 +212,18 @@ class RulesActivity : Activity() {
         contactPhoneInput = singleLineInput(savedSettings.contactPhone, InputType.TYPE_CLASS_PHONE).apply {
             contentDescription = "Caregiver phone input"
             textSize = userTextSize
+        }
+        // Simple, single-line name so the companion can address her personally, without the
+        // caregiver having to wade through the long Profile Notes template on first run.
+        val savedMomName = Regex("(?im)^\\s*Name:\\s*(.+)$")
+            .find(savedSettings.profileNotes)?.groupValues?.getOrNull(1)?.trim().orEmpty()
+        momNameInput = singleLineInput(
+            savedMomName,
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS
+        ).apply {
+            contentDescription = "Her first name input"
+            textSize = userTextSize
+            hint = "e.g. Галя / Nina"
         }
         backendUrlInput = singleLineInput(savedSettings.backendUrl, InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI).apply {
             contentDescription = "AI backend URL input"
@@ -311,7 +346,10 @@ class RulesActivity : Activity() {
             contentDescription = "Open VIP upgrade screen"
         }
 
+        // ── Essentials — shown on the first-run screen AND in full settings ──
         root.addView(titleText, fullWidthWrap())
+        root.addView(languageLabel, fullWidthWrap())
+        root.addView(languageSpinner, fullWidthWrap())
         root.addView(textSizeLabel, fullWidthWrap())
         root.addView(textSizeSpinner, fullWidthWrap())
         root.addView(ttsSpeedLabel, fullWidthWrap())
@@ -319,15 +357,26 @@ class RulesActivity : Activity() {
         root.addView(listeningHoursLabel, fullWidthWrap())
         root.addView(listeningHoursDescription, fullWidthWrap())
         root.addView(listeningHoursSpinner, fullWidthWrap())
+        if (isFirstRunSetup) {
+            root.addView(label("Her first name (optional)"))
+            root.addView(momNameInput, fixedHeight(64))
+        }
         root.addView(statusText, fullWidthWrap())
-        root.addView(label("Rules Prompt"))
-        root.addView(rulesInput, fullWidthWrap())
-        root.addView(label("Mom Profile Notes"))
-        root.addView(profileInput, fullWidthWrap())
-        root.addView(label("Basic Vocabulary (English / Russian)"))
-        root.addView(vocabularyInput, fullWidthWrap())
-        root.addView(label("Prompt Topics (one per line, e.g. 'Moscow', 'cats', 'flowers')"))
-        root.addView(promptTopicsInput, fullWidthWrap())
+
+        // ── Advanced — full settings only. Keeping these off the FIRST-RUN screen is what
+        //    stops it dumping a huge wall of default words at the caregiver. The defaults are
+        //    still saved and used by the offline companion; they just aren't shown on setup. ──
+        if (!isFirstRunSetup) {
+            root.addView(label("Rules Prompt"))
+            root.addView(rulesInput, fullWidthWrap())
+            root.addView(label("Mom Profile Notes"))
+            root.addView(profileInput, fullWidthWrap())
+            root.addView(label("Basic Vocabulary (English / Russian)"))
+            root.addView(vocabularyInput, fullWidthWrap())
+            root.addView(label("Prompt Topics (one per line, e.g. 'Moscow', 'cats', 'flowers')"))
+            root.addView(promptTopicsInput, fullWidthWrap())
+        }
+
         root.addView(privacyNotice())
         root.addView(label("PIN"))
         root.addView(pinInput, fixedHeight(64))
@@ -335,34 +384,40 @@ class RulesActivity : Activity() {
         root.addView(contactNameInput, fixedHeight(64))
         root.addView(label("Caregiver Phone"))
         root.addView(contactPhoneInput, fixedHeight(64))
-        root.addView(label("🤖 Free AI Key (Gemini) — makes the app smart!"))
-        root.addView(geminiKeyHint(), fullWidthWrap())
-        root.addView(geminiApiKeyInput, fixedHeight(64))
-        root.addView(label("AI Backend URL (optional, advanced)"))
-        root.addView(backendUrlInput, fixedHeight(64))
-        root.addView(label("AI Backend Token"))
-        root.addView(backendTokenInput, fixedHeight(64))
-        root.addView(label("Test Message"))
-        root.addView(testMessageInput, fullWidthWrap())
-        root.addView(localTestButton, fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) })
-        root.addView(backendTestButton, fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) })
-        root.addView(testResultText, fullWidthWrap())
+
+        if (!isFirstRunSetup) {
+            root.addView(label("🤖 Free AI Key (Gemini) — makes the app smart!"))
+            root.addView(geminiKeyHint(), fullWidthWrap())
+            root.addView(geminiApiKeyInput, fixedHeight(64))
+            root.addView(label("AI Backend URL (optional, advanced)"))
+            root.addView(backendUrlInput, fixedHeight(64))
+            root.addView(label("AI Backend Token"))
+            root.addView(backendTokenInput, fixedHeight(64))
+            root.addView(label("Test Message"))
+            root.addView(testMessageInput, fullWidthWrap())
+            root.addView(localTestButton, fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) })
+            root.addView(backendTestButton, fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) })
+            root.addView(testResultText, fullWidthWrap())
+        }
+
         root.addView(
             saveButton,
             fixedHeight(64).apply { setMargins(0, dp(18), 0, 0) }
         )
-        root.addView(
-            resetButton,
-            fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) }
-        )
-        root.addView(
-            deviceCheckButton,
-            fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) }
-        )
-        root.addView(
-            vipButton,
-            fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) }
-        )
+        if (!isFirstRunSetup) {
+            root.addView(
+                resetButton,
+                fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) }
+            )
+            root.addView(
+                deviceCheckButton,
+                fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) }
+            )
+            root.addView(
+                vipButton,
+                fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) }
+            )
+        }
         root.addView(
             closeButton,
             fixedHeight(56).apply { setMargins(0, dp(10), 0, 0) }
@@ -418,12 +473,23 @@ class RulesActivity : Activity() {
         }
         val prefs = getSharedPreferences("onboarding", MODE_PRIVATE).edit()
         prefs.putFloat("textSize", textSizePref)
+        // Persist the language choice where MainActivity and the listening service read it.
+        prefs.putString("language", if (languageSpinner.selectedItemPosition == 1) "Russian" else "English")
         prefs.apply()
+
+        // On first run, personalise the profile with just her name (kept clean, instead of the
+        // long default template). In full settings, the caregiver edits Profile Notes directly.
+        val profileToSave = if (isFirstRunSetup) {
+            val momName = momNameInput.text.toString().trim()
+            if (momName.isNotBlank()) "Name: $momName" else ""
+        } else {
+            profileInput.text.toString()
+        }
 
         rulesStore.save(
             CaregiverSettings(
                 rules = rulesInput.text.toString(),
-                profileNotes = profileInput.text.toString(),
+                profileNotes = profileToSave,
                 vocabularyNotes = vocabularyInput.text.toString(),
                 promptTopics = promptTopicsInput.text.toString(),
                 pin = pin,

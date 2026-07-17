@@ -637,13 +637,14 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
         private const val PUSH_TO_TALK_YIELD_MS = 20_000L
         private const val MAX_RECENT_TURNS = 6
         /**
-         * Gentle conversation prompt fires after this much silence. Kept short (3 min):
-         * the companion must INITIATE conversation, not wait for it — the target user
-         * rarely starts talking on her own.
+         * Gentle conversation prompt fires after this much silence. Spaced out (6 min) so the
+         * companion isn't constantly cycling through prompts — which felt naggy and incoherent —
+         * while still carrying the conversation for a user who rarely starts talking on her own.
+         * The idle timer resets every time she speaks, so this only applies to genuine silence.
          */
-        private const val IDLE_CHECK_IN_DELAY_MS = 3 * 60 * 1000L
+        private const val IDLE_CHECK_IN_DELAY_MS = 6 * 60 * 1000L
         /** First conversation opener fires this long after the start-up greeting. */
-        private const val OPENER_DELAY_MS = 45 * 1000L
+        private const val OPENER_DELAY_MS = 90 * 1000L
 
         /**
          * Tells the service (if running) to yield the microphone for ~20s because Mom just
