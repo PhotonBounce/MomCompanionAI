@@ -44,7 +44,10 @@ android {
 
     buildTypes {
         debug {
-            // No applicationIdSuffix — keeps package com.friendai for easy adb/emulator testing
+            // Distinct package so this sideloadable test build installs ALONGSIDE the
+            // Play Store (release-signed) com.friendai instead of being rejected with
+            // "app not installed" due to the signature mismatch on the same package.
+            applicationIdSuffix ".debug"
             versionNameSuffix "-debug"
             debuggable true
         }

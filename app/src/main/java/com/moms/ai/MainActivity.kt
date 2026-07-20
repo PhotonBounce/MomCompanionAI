@@ -146,7 +146,11 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
 
         showOnboardingIfNeeded(this)
-        openFirstRunCaregiverSetupIfNeeded()
+        // Caregiver setup is no longer forced onto the start screen — that screen is
+        // text-heavy and was the first thing Mom saw on launch. The app now opens
+        // straight to the Talk screen; the caregiver reaches setup via the gear icon
+        // (PIN-protected). Sensible defaults apply until they do.
+        // openFirstRunCaregiverSetupIfNeeded()
         showAiKeyHintIfNeeded()
 
         tts = TextToSpeech(this, this)
