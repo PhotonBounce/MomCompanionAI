@@ -1,16 +1,32 @@
-<resources>
-    <style name="Theme.MomsAI" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!--
+      LIGHT-ONLY theme. The whole UI is designed for light surfaces (white cards,
+      dark text, a pastel window background). It used to extend a DayNight parent
+      but shipped no night colours, so on a phone in dark mode every view that
+      relied on the default text colour rendered WHITE on the light background —
+      e.g. the caregiver setup screen's labels were unreadable. We now:
+        * use a Light (non-DayNight) parent,
+        * pin android:textColorPrimary/Secondary to dark values so default text
+          can never come out white, and
+        * disable OEM force-dark so "dark mode for all apps" can't invert it.
+    -->
+    <style name="Theme.MomsAI" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/mc_accent</item>
         <item name="colorPrimaryVariant">@color/mc_accent_dark</item>
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/mc_talk</item>
         <item name="colorSecondaryVariant">@color/mc_talk_dark</item>
         <item name="colorOnSecondary">@color/white</item>
+        <!-- Default text colours: always dark, so nothing renders white-on-light -->
+        <item name="android:textColorPrimary">@color/mc_text_primary</item>
+        <item name="android:textColorSecondary">@color/mc_text_hint</item>
         <!-- Gradient window background so all screens look polished by default -->
         <item name="android:windowBackground">@drawable/bg_parallax</item>
         <item name="android:windowAnimationStyle">@style/WindowAnim</item>
         <!-- Remove the default button all-caps transform globally -->
         <item name="android:textAllCaps">false</item>
+        <!-- Keep our light design even when the OS forces app-wide dark mode -->
+        <item name="android:forceDarkAllowed" tools:targetApi="q">false</item>
     </style>
 
     <style name="WindowAnim" parent="@android:style/Animation.Activity">
