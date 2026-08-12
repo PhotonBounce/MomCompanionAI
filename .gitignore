@@ -13,3 +13,6 @@ keystore/
 app/google-play-service-account.json
 *.jks
 key.properties
+
+# Bundled AI key - NEVER commit
+gemini.properties

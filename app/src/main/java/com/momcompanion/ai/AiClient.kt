@@ -232,8 +232,13 @@ class GeminiAiClient(
 object AiClientFactory {
     fun create(settings: CaregiverSettings): AiClient {
         return when {
+            // A caregiver-entered key always wins.
             settings.geminiApiKey.isNotBlank() -> GeminiAiClient(settings.geminiApiKey)
             settings.backendUrl.isNotBlank() -> ProxyAiClient(settings.backendUrl)
+            // Otherwise use the key bundled at build time (gemini.properties), so the app is
+            // smart out-of-the-box with no setup. Empty in open-source builds -> offline engine.
+            com.friendai.BuildConfig.DEFAULT_GEMINI_KEY.isNotBlank() ->
+                GeminiAiClient(com.friendai.BuildConfig.DEFAULT_GEMINI_KEY)
             else -> LocalAiClient()
         }
     }

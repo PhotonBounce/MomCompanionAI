@@ -17,10 +17,23 @@ if (keystorePropsFile.exists()) {
     keystorePropsFile.withInputStream { keystoreProps.load(it) }
 }
 
+// Optional bundled Gemini key so the app uses real AI out-of-the-box, with no caregiver
+// setup. Read from gemini.properties at the repo root (git-ignored, never committed).
+// If the file is absent the field is empty and the app falls back to the offline engine,
+// exactly as before. A caregiver-entered key in Settings always takes precedence.
+def geminiPropsFile = rootProject.file("gemini.properties")
+def geminiProps = new Properties()
+if (geminiPropsFile.exists()) { geminiPropsFile.withInputStream { geminiProps.load(it) } }
+def defaultGeminiKey = geminiProps.getProperty("geminiApiKey", "")
+
 android {
     namespace 'com.friendai'
     compileSdk 36
     buildToolsVersion "36.0.0"
+
+    buildFeatures {
+        buildConfig true
+    }
 
     if (keystorePropsFile.exists()) {
         signingConfigs {
@@ -40,6 +53,7 @@ android {
         versionCode 15
         versionName "2.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "DEFAULT_GEMINI_KEY", "\"${defaultGeminiKey}\""
     }
 
     buildTypes {
