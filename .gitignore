@@ -16,3 +16,6 @@ key.properties
 
 # Bundled AI key - NEVER commit
 gemini.properties
+
+# Built APK copies placed at repo root for delivery
+/*.apk
