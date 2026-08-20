@@ -82,17 +82,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <TextView
-            android:id="@+id/conversationText"
+        <ScrollView
+            android:id="@+id/chatScroll"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:text="Your conversation will appear here.\n\nTap Talk to begin."
-            android:textSize="21sp"
-            android:textColor="@color/mc_text_primary"
-            android:gravity="top|start"
-            android:padding="20dp"
-            android:lineSpacingMultiplier="1.25"
-            android:contentDescription="Conversation transcript"/>
+            android:padding="14dp"
+            android:scrollbars="none"
+            android:contentDescription="Conversation transcript">
+
+            <LinearLayout
+                android:id="@+id/chatBubbles"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+
+        </ScrollView>
 
         <TextView
             android:id="@+id/closedCaptionText"

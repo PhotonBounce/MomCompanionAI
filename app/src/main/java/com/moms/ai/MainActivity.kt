@@ -48,7 +48,8 @@ import android.speech.RecognizerIntent
  * - Escalates to [EmergencyActivity] when a reply is flagged as urgent/medical/scam
  */
 class MainActivity : Activity(), TextToSpeech.OnInitListener {
-    private lateinit var conversationText: TextView
+    private lateinit var chatScroll: android.widget.ScrollView
+    private lateinit var chatBubbles: android.widget.LinearLayout
     private lateinit var closedCaptionText: TextView
     private lateinit var equalizerView: EqualizerView
     private lateinit var soundEffectIcon: ImageView
@@ -103,10 +104,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main_stylish)
 
-        conversationText = findViewById(R.id.conversationText)
-        // Allow long AI replies to be scrolled with a finger — without this the text is
-        // clipped at the card boundary and there's no way to read the rest.
-        conversationText.movementMethod = android.text.method.ScrollingMovementMethod.getInstance()
+        chatScroll = findViewById(R.id.chatScroll)
+        chatBubbles = findViewById(R.id.chatBubbles)
         closedCaptionText = findViewById(R.id.closedCaptionText)
         equalizerView = findViewById(R.id.equalizerView)
         soundEffectIcon = findViewById(R.id.soundEffectIcon)
@@ -380,8 +379,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             val result = tts?.setLanguage(currentInputLocale)
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 ttsReady = false
-                Toast.makeText(this, "TTS language not supported. Please install TTS data.", Toast.LENGTH_LONG).show()
-                conversationText.text = "TTS language not supported. Please install TTS data."
+                showStatus("TTS language not supported. Please install TTS data.")
             } else {
                 // Apply the caregiver-configured speech rate (slow / normal / fast).
                 val settings = CaregiverRulesStore(this).load()
@@ -399,8 +397,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 }
             }
         } else {
-            Toast.makeText(this, "Text-to-Speech initialization failed. Please enable TTS in device settings.", Toast.LENGTH_LONG).show()
-            conversationText.text = "TTS initialization failed. Please enable TTS in device settings."
+            showStatus("TTS initialization failed. Please enable TTS in device settings.")
         }
     }
 
@@ -482,15 +479,68 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         }
     }
 
-    /** Append one turn to the on-screen transcript and scroll to the newest line. */
+    /** Append one turn to the on-screen transcript as a chat bubble and scroll to it. */
     private fun appendTranscript(speaker: String, text: String) {
         transcript.append(speaker).append(": ").append(text).append("\n\n")
-        conversationText.text = transcript.toString()
-        conversationText.post {
-            val layout = conversationText.layout ?: return@post
-            val delta = layout.getLineBottom(conversationText.lineCount - 1) -
-                conversationText.height - conversationText.scrollY
-            if (delta > 0) conversationText.scrollBy(0, delta)
+        val fromFriend = !speaker.equals("You", true) && !speaker.equals("Вы", true)
+        val density = resources.displayMetrics.density
+        fun dp(v: Int) = (v * density).toInt()
+
+        // A vertical holder: small speaker label, then the coloured bubble.
+        val holder = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            lp.topMargin = dp(8); lp.bottomMargin = dp(8)
+            layoutParams = lp
+            gravity = if (fromFriend) android.view.Gravity.START else android.view.Gravity.END
+        }
+
+        val label = TextView(this).apply {
+            this.text = speaker
+            textSize = 13f
+            setTextColor(
+                if (fromFriend) androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.mc_accent)
+                else androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.mc_text_hint)
+            )
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            lp.leftMargin = dp(12); lp.rightMargin = dp(12); lp.bottomMargin = dp(3)
+            layoutParams = lp
+        }
+
+        val bubble = TextView(this).apply {
+            this.text = text
+            textSize = 20f
+            setTextColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.mc_text_primary))
+            setLineSpacing(0f, 1.2f)
+            setBackgroundResource(if (fromFriend) R.drawable.bg_bubble_friend else R.drawable.bg_bubble_user)
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            // Cap width so long replies wrap into a bubble instead of a full-width band.
+            maxWidth = (resources.displayMetrics.widthPixels * 0.82f).toInt()
+            layoutParams = lp
+        }
+
+        holder.addView(label)
+        holder.addView(bubble)
+        chatBubbles.addView(holder)
+        chatScroll.post { chatScroll.fullScroll(android.view.View.FOCUS_DOWN) }
+    }
+
+    /** Show a short status/error message: a Friendai bubble plus a toast so it's never missed. */
+    private fun showStatus(message: String) {
+        runOnUiThread {
+            if (::chatBubbles.isInitialized) appendTranscript("Friendai", message)
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -525,7 +575,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                         "Microphone permission is needed so your AI companion can hear you. Tap Talk again to allow it.",
                         Toast.LENGTH_LONG
                     ).show()
-                    conversationText.text = "Microphone permission is needed to talk with your AI companion."
+                    showStatus("Microphone permission is needed to talk with your AI companion.")
                 }
             }
             REQ_CODE_RECORD_AUDIO_FOR_TIMED_LISTENING -> {
@@ -566,7 +616,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             startActivityForResult(intent, REQ_CODE_SPEECH_INPUT)
         } catch (e: Exception) {
             Toast.makeText(this, "Speech recognition not supported. Please install the Google app or enable voice input in device settings.", Toast.LENGTH_LONG).show()
-            conversationText.text = "Speech recognition not supported. Please install the Google app or enable voice input."
+            showStatus("Speech recognition not supported. Please install the Google app or enable voice input.")
         }
     }
 
@@ -655,7 +705,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     maybeEscalate(reply, activityEngine)
                     // Keep the conversation flowing hands-free: listen again for Mom's next turn.
                     if (conversationActive) {
-                        conversationText.postDelayed({
+                        chatScroll.postDelayed({
                             if (conversationActive) ensureMicPermissionThenTalk()
                         }, 800)
                     }
@@ -740,7 +790,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             }
         } else {
             Toast.makeText(this, "TTS not ready. Please enable TTS in device settings.", Toast.LENGTH_LONG).show()
-            conversationText.text = "TTS not ready. Please enable TTS in device settings."
+            showStatus("TTS not ready. Please enable TTS in device settings.")
             onDone?.invoke()
         }
     }
