@@ -27,6 +27,8 @@ if (geminiPropsFile.exists()) { geminiPropsFile.withInputStream { geminiProps.lo
 def defaultGeminiKey = geminiProps.getProperty("geminiApiKey", "")
 // Optional bundled Claude/Anthropic key (property "anthropicApiKey", starts with "sk-ant-").
 def defaultAnthropicKey = geminiProps.getProperty("anthropicApiKey", "")
+// Optional bundled ElevenLabs key (property "elevenLabsApiKey") for premium cloud voice.
+def defaultElevenLabsKey = geminiProps.getProperty("elevenLabsApiKey", "")
 
 android {
     namespace 'com.friendai'
@@ -57,6 +59,7 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "String", "DEFAULT_GEMINI_KEY", "\"${defaultGeminiKey}\""
         buildConfigField "String", "DEFAULT_ANTHROPIC_KEY", "\"${defaultAnthropicKey}\""
+        buildConfigField "String", "DEFAULT_ELEVENLABS_KEY", "\"${defaultElevenLabsKey}\""
     }
 
     buildTypes {

@@ -389,11 +389,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 // the service will greet her on its own after the first voice detection.
                 if (!hasGreetedOnThisLaunch && settings.timedListeningHours <= 0) {
                     hasGreetedOnThisLaunch = true
-                    val greeting = if (currentInputLocale.language == "ru")
-                        "Привет! Я здесь. Нажмите кнопку «Говорить», когда будете готовы."
-                    else
-                        "Hello! I'm here. Tap the Talk button when you're ready to chat."
-                    speakReply(greeting)
+                    speakWelcomeGreeting()
                 }
             }
         } else {
@@ -764,18 +760,56 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     /**
      * Speaks the AI reply using TTS and calls onDone when finished.
      */
-    private fun speakReply(text: String, onDone: (() -> Unit)? = null) {
-        // Nudge media volume to at least 60% if it's very low — elderly users often have
-        // phones on near-silent and miss AI replies entirely. We only raise, never lower.
+    /** True when the caregiver has opted into premium cloud voice (consumes credits). */
+    private fun premiumLiveVoiceEnabled(): Boolean =
+        getSharedPreferences("friendai_prefs", MODE_PRIVATE).getBoolean("premium_voice", false)
+
+    /** Raise media volume to ~55% if it's very low, so replies aren't missed. Never lowers it. */
+    private fun raiseVolumeIfLow() {
         runCatching {
             val am = getSystemService(AudioManager::class.java)
             val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             val curVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
             val minDesired = (maxVol * 0.55f).toInt()
-            if (curVol < minDesired) {
-                am.setStreamVolume(AudioManager.STREAM_MUSIC, minDesired, 0)
-            }
+            if (curVol < minDesired) am.setStreamVolume(AudioManager.STREAM_MUSIC, minDesired, 0)
         }
+    }
+
+    private fun speakReply(text: String, onDone: (() -> Unit)? = null) {
+        raiseVolumeIfLow()
+        // Premium cloud voice, only if the caregiver opted in and a key is bundled. Any failure
+        // falls straight back to the phone voice so Mom is never left in silence.
+        if (premiumLiveVoiceEnabled() && PremiumVoice.available()) {
+            PremiumVoice.speak(applicationContext, text, PremiumVoice.VOICE_DEFAULT, onDone) {
+                speakWithPhoneVoice(text, onDone)
+            }
+        } else {
+            speakWithPhoneVoice(text, onDone)
+        }
+    }
+
+    /**
+     * The very first thing Mom hears. Plays a pre-recorded premium greeting bundled in the app
+     * (zero runtime cost, always a warm human-quality voice); if no premium key is bundled, falls
+     * back to speaking the greeting with the phone voice.
+     */
+    private fun speakWelcomeGreeting() {
+        raiseVolumeIfLow()
+        val ru = currentInputLocale.language == "ru"
+        if (PremiumVoice.available()) {
+            val res = if (ru) R.raw.greeting_ru else R.raw.greeting_en
+            PremiumVoice.playRaw(applicationContext, res, null)
+        } else {
+            val greeting = if (ru)
+                "Привет! Я здесь. Нажмите кнопку «Говорить», когда будете готовы."
+            else
+                "Hello! I'm here. Tap the Talk button when you're ready to chat."
+            speakWithPhoneVoice(greeting, null)
+        }
+    }
+
+    /** Speak with the device's built-in text-to-speech (free, unlimited, offline). */
+    private fun speakWithPhoneVoice(text: String, onDone: (() -> Unit)?) {
         if (ttsReady) {
             if (onDone != null) {
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -789,7 +823,6 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "ai_reply")
             }
         } else {
-            Toast.makeText(this, "TTS not ready. Please enable TTS in device settings.", Toast.LENGTH_LONG).show()
             showStatus("TTS not ready. Please enable TTS in device settings.")
             onDone?.invoke()
         }
