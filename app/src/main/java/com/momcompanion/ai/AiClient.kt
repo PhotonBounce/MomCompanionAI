@@ -191,7 +191,10 @@ class GeminiAiClient(
                 org.json.JSONObject().put("maxOutputTokens", 220).put("temperature", 0.8)
             )
 
-        val url = java.net.URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent")
+        // gemini-2.0-flash was retired by Google (returns 404). Flash-Lite is fast, low-cost,
+        // and — unlike the heavier "thinking" flash models — returns clean short replies that
+        // fit a small token budget, which is exactly what a spoken companion needs.
+        val url = java.net.URL("https://generativelanguage.googleapis.com/v1beta/models/$GEMINI_MODEL:generateContent")
         val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 10000
@@ -227,13 +230,129 @@ class GeminiAiClient(
         if (text.isBlank()) error("Gemini returned empty reply.")
         return CompanionReply(text)
     }
+
+    companion object {
+        // Google retired gemini-2.0-flash (404). Flash-Lite is fast, cheap, non-thinking,
+        // and returns clean short replies suited to a spoken companion. Change here only.
+        const val GEMINI_MODEL = "gemini-3.1-flash-lite"
+    }
+}
+
+/**
+ * Talks to Anthropic's Claude (Messages API) via raw HTTP, mirroring GeminiAiClient.
+ * Falls back to the offline engine on any failure so Mom is never left with nothing.
+ */
+class AnthropicAiClient(
+    private val apiKey: String,
+    private val companionEngine: CompanionEngine = CompanionEngine(),
+    private val fallbackClient: LocalAiClient = LocalAiClient(companionEngine)
+) : AiClient {
+
+    override fun generateReply(
+        message: String,
+        recentConversation: String,
+        settings: CaregiverSettings,
+        context: android.content.Context?,
+        callback: (CompanionReply) -> Unit
+    ) {
+        val safetyReply = companionEngine.safetyReplyFor(message, settings)
+        if (safetyReply != null) {
+            callback(safetyReply)
+            return
+        }
+
+        Thread {
+            val result = runCatching { requestClaudeReply(message, recentConversation, settings) }
+            if (result.isSuccess) {
+                callback(result.getOrThrow())
+            } else {
+                fallbackClient.generateReply(message, recentConversation, settings, context, callback)
+            }
+        }.start()
+    }
+
+    private fun requestClaudeReply(
+        message: String,
+        recentConversation: String,
+        settings: CaregiverSettings
+    ): CompanionReply {
+        val prompt = PromptBuilder.build(settings, message, recentConversation)
+        // system = persona + language rules; a single user turn carries the recent
+        // conversation + Mom's latest message (PromptBuilder already formats both).
+        val body = org.json.JSONObject()
+            .put("model", MODEL)
+            .put("max_tokens", 300)
+            .put("temperature", 0.8)
+            .put("system", prompt.instructions)
+            .put(
+                "messages",
+                org.json.JSONArray().put(
+                    org.json.JSONObject()
+                        .put("role", "user")
+                        .put("content", prompt.input)
+                )
+            )
+
+        val url = java.net.URL("https://api.anthropic.com/v1/messages")
+        val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 10000
+            readTimeout = 30000
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("x-api-key", apiKey)
+            setRequestProperty("anthropic-version", "2023-06-01")
+        }
+
+        java.io.OutputStreamWriter(connection.outputStream).use { it.write(body.toString()) }
+
+        val responseCode = connection.responseCode
+        val stream = if (responseCode in 200..299) connection.inputStream else (connection.errorStream ?: connection.inputStream)
+        val responseBody = stream.bufferedReader().use { it.readText() }
+        connection.disconnect()
+
+        if (responseCode !in 200..299) error(responseBody)
+
+        val json = org.json.JSONObject(responseBody)
+        // Claude may decline via stop_reason "refusal" (empty text) — fall back to offline then.
+        val content = json.optJSONArray("content")
+        val text = buildString {
+            if (content != null) {
+                for (i in 0 until content.length()) {
+                    val block = content.optJSONObject(i)
+                    if (block?.optString("type") == "text") append(block.optString("text"))
+                }
+            }
+        }.trim()
+
+        if (text.isBlank()) error("Claude returned an empty reply.")
+        return CompanionReply(text)
+    }
+
+    companion object {
+        // Fast, low-cost, fluent in Russian — a good fit for short spoken replies.
+        // Change to "claude-sonnet-5" or "claude-opus-5" for higher quality at higher cost.
+        const val MODEL = "claude-haiku-4-5"
+    }
 }
 
 object AiClientFactory {
+    /** Anthropic keys begin with "sk-ant-"; Gemini keys begin with "AIza". */
+    private fun clientForKey(key: String): AiClient =
+        if (key.startsWith("sk-ant-")) AnthropicAiClient(key) else GeminiAiClient(key)
+
     fun create(settings: CaregiverSettings): AiClient {
         return when {
-            settings.geminiApiKey.isNotBlank() -> GeminiAiClient(settings.geminiApiKey)
+            // A caregiver-entered key always wins; routed to Claude or Gemini by prefix.
+            settings.geminiApiKey.isNotBlank() -> clientForKey(settings.geminiApiKey)
             settings.backendUrl.isNotBlank() -> ProxyAiClient(settings.backendUrl)
+            // Otherwise use a key bundled at build time (gemini.properties), so the app is
+            // smart out-of-the-box with no setup. Both empty -> offline engine.
+            com.friendai.BuildConfig.DEFAULT_ANTHROPIC_KEY.isNotBlank() ->
+                AnthropicAiClient(com.friendai.BuildConfig.DEFAULT_ANTHROPIC_KEY)
+            com.friendai.BuildConfig.DEFAULT_GEMINI_KEY.isNotBlank() ->
+                GeminiAiClient(com.friendai.BuildConfig.DEFAULT_GEMINI_KEY)
             else -> LocalAiClient()
         }
     }

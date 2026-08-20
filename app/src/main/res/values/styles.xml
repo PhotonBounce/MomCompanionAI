@@ -1,11 +1,24 @@
 <resources>
-    <style name="Theme.MomsAI" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <!--
+      Light-only theme. The app draws a FIXED light gradient background on every screen,
+      so it must NOT follow the system dark mode. With the old DayNight parent, text and
+      widget colors resolved to white when the phone was in dark mode, making un-tinted
+      labels invisible on the light background (e.g. the "First Setup" screen). Forcing a
+      Light parent AND pinning the text colors keeps every screen legible regardless of the
+      phone's dark-mode setting.
+    -->
+    <style name="Theme.MomsAI" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/mc_accent</item>
         <item name="colorPrimaryVariant">@color/mc_accent_dark</item>
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/mc_talk</item>
         <item name="colorSecondaryVariant">@color/mc_talk_dark</item>
         <item name="colorOnSecondary">@color/white</item>
+        <!-- Pin text colors dark so un-tinted TextViews stay legible on the light background. -->
+        <item name="android:textColorPrimary">@color/mc_text_primary</item>
+        <item name="android:textColorSecondary">@color/mc_text_secondary</item>
+        <item name="android:textColorHint">@color/mc_text_hint</item>
+        <item name="android:textColor">@color/mc_text_primary</item>
         <!-- Gradient window background so all screens look polished by default -->
         <item name="android:windowBackground">@drawable/bg_parallax</item>
         <item name="android:windowAnimationStyle">@style/WindowAnim</item>

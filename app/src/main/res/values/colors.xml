@@ -7,23 +7,26 @@
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 
-    <!-- MomCompanion design system -->
-    <color name="mc_accent">#7C4DFF</color>
-    <color name="mc_accent_dark">#5C35CC</color>
-    <color name="mc_talk">#00C896</color>
-    <color name="mc_talk_dark">#00A07A</color>
-    <color name="mc_danger">#FF4757</color>
-    <color name="mc_danger_dark">#CC3846</color>
-    <color name="mc_vip_gold">#FF9500</color>
-    <color name="mc_vip_gold_dark">#CC7700</color>
-    <color name="mc_text_primary">#1A1A2E</color>
-    <color name="mc_text_secondary">#666688</color>
-    <color name="mc_text_hint">#999AB3</color>
+    <!-- Friendai design system — calm teal & coral (matches the concept video) -->
+    <color name="mc_accent">#1D7874</color>
+    <color name="mc_accent_dark">#145F5B</color>
+    <color name="mc_talk">#2A9D8F</color>
+    <color name="mc_talk_dark">#21867B</color>
+    <color name="mc_danger">#E76F51</color>
+    <color name="mc_danger_dark">#C85A3E</color>
+    <color name="mc_vip_gold">#E9A23B</color>
+    <color name="mc_vip_gold_dark">#C6851F</color>
+    <color name="mc_text_primary">#212E34</color>
+    <color name="mc_text_secondary">#68787E</color>
+    <color name="mc_text_hint">#9AA7AB</color>
     <color name="mc_card_bg">#FFFFFF</color>
-    <color name="mc_input_bg">#F0EBF8</color>
-    <color name="mc_secondary_btn">#EEEAF7</color>
-    <color name="mc_divider">#E8E0FF</color>
-    <color name="mc_bg_top">#F3EFFF</color>
-    <color name="mc_bg_bottom">#FFF0F7</color>
+    <color name="mc_input_bg">#EAF3F1</color>
+    <color name="mc_secondary_btn">#E3F0EE</color>
+    <color name="mc_divider">#DCEAE8</color>
+    <color name="mc_bg_top">#F7FBFB</color>
+    <color name="mc_bg_bottom">#DFEEEC</color>
     <color name="mc_listening_blue">#1565C1</color>
+    <!-- Chat bubbles -->
+    <color name="mc_bubble_friend">#DBF0EE</color>
+    <color name="mc_bubble_user">#EEF0F2</color>
 </resources>

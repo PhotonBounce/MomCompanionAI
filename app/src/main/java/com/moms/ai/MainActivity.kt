@@ -14,8 +14,10 @@ import java.util.Locale
 import com.friendai.CompanionEngine
 import com.friendai.CaregiverRulesStore
 import com.friendai.GeminiAiClient
+import com.friendai.AnthropicAiClient
 import com.friendai.ProxyAiClient
 import com.friendai.LocalAiClient
+import com.friendai.BuildConfig
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
@@ -46,13 +48,15 @@ import android.speech.RecognizerIntent
  * - Escalates to [EmergencyActivity] when a reply is flagged as urgent/medical/scam
  */
 class MainActivity : Activity(), TextToSpeech.OnInitListener {
-    private lateinit var conversationText: TextView
+    private lateinit var chatScroll: android.widget.ScrollView
+    private lateinit var chatBubbles: android.widget.LinearLayout
     private lateinit var closedCaptionText: TextView
     private lateinit var equalizerView: EqualizerView
     private lateinit var soundEffectIcon: ImageView
     private lateinit var animationIcon: ImageView
     private lateinit var talkButton: Button
     private lateinit var listeningModeBanner: TextView
+    private lateinit var bottomNav: com.google.android.material.bottomnavigation.BottomNavigationView
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var ttsInitTried = false
@@ -76,12 +80,22 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private val REQ_CODE_RECORD_AUDIO_FOR_TIMED_LISTENING = 2002
     private val REQ_CODE_NOTIFICATIONS_PERMISSION = 2003
 
-    /** Rolling text summary of the last few turns, sent to the backend for short-term context. */
+    /** Rolling text summary of recent turns, sent to the backend for conversational memory.
+     *  Kept generous so the AI can hold a long, hours-long conversation with continuity. */
     private val recentTurns = ArrayDeque<String>()
-    private val MAX_RECENT_TURNS = 6
+    private val MAX_RECENT_TURNS = 30
 
     /** Persistent engine so recentTopics/recentMoods/lastAIReply accumulate across push-to-talk turns. */
     private val activityEngine = CompanionEngine()
+
+    /** The full on-screen conversation transcript (You / Friendai turns), shown in the card. */
+    private val transcript = StringBuilder()
+
+    /**
+     * When true, the app keeps listening after each reply so a conversation flows hands-free:
+     * tap Talk once, then just speak back and forth. Tap Talk again (now "Stop") to end it.
+     */
+    private var conversationActive = false
 
     /**
      * Initializes the main UI, onboarding, and voice interaction.
@@ -90,10 +104,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main_stylish)
 
-        conversationText = findViewById(R.id.conversationText)
-        // Allow long AI replies to be scrolled with a finger — without this the text is
-        // clipped at the card boundary and there's no way to read the rest.
-        conversationText.movementMethod = android.text.method.ScrollingMovementMethod.getInstance()
+        chatScroll = findViewById(R.id.chatScroll)
+        chatBubbles = findViewById(R.id.chatBubbles)
         closedCaptionText = findViewById(R.id.closedCaptionText)
         equalizerView = findViewById(R.id.equalizerView)
         soundEffectIcon = findViewById(R.id.soundEffectIcon)
@@ -121,7 +133,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     vibrator?.vibrate(60)
                 }
             }
-            ensureMicPermissionThenTalk()
+            // Tap once to start a flowing conversation; tap again to stop it.
+            if (conversationActive) stopConversation() else startConversation()
         }
 
         // Wire up Call Caregiver button for accessibility
@@ -130,10 +143,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             startActivity(intent)
         }
 
-        // Tucked-away caregiver entry point — PIN-gated so Mom can't wander into settings.
-        findViewById<android.widget.ImageButton>(R.id.caregiverSettingsButton)?.setOnClickListener {
-            startActivity(Intent(this, PinActivity::class.java))
-        }
+        // Caregiver settings now live behind the "Settings" tab in the bottom nav
+        // (PIN-gated in setupBottomNav), so Mom can't wander into them.
 
         // Animate header and conversation card fade-in
         findViewById<TextView>(R.id.headerTitle)?.apply {
@@ -144,6 +155,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             alpha = 0f
             animate().alpha(1f).setDuration(1200).setStartDelay(300).start()
         }
+
+        setupBottomNav()
 
         showOnboardingIfNeeded(this)
         openFirstRunCaregiverSetupIfNeeded()
@@ -320,19 +333,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         val prefs = getSharedPreferences("onboarding", MODE_PRIVATE)
         if (prefs.getBoolean("ai_key_hint_shown", false)) return
         prefs.edit().putBoolean("ai_key_hint_shown", true).apply()
-        conversationText.text =
-            "⚙️ Caregiver setup tip:\n\n" +
-            "The app works offline right now, but adding a FREE Gemini AI key makes " +
-            "conversation much smarter and more natural.\n\n" +
-            "How to add it:\n" +
-            "1. Tap the gear icon (top right)\n" +
-            "2. Enter your PIN (default: 1234)\n" +
-            "3. Scroll down to '🤖 Free AI Key (Gemini)'\n" +
-            "4. Paste your key and tap Save\n\n" +
-            "Get a free key at: aistudio.google.com/apikey\n" +
-            "(No credit card needed — it's completely free)\n\n" +
-            "Also fill in 'Profile Notes' with her name and favourite topics — " +
-            "the AI will personalise every reply."
+        // Intentionally do NOT dump setup instructions onto Mom's start screen — that turned
+        // the home page into a wall of text. Caregivers add the AI key in Settings (gear icon)
+        // instead; the start screen stays clean with just the conversation.
     }
 
     private fun isRunningInTest(): Boolean {
@@ -359,6 +362,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         tts?.stop()
         tts?.shutdown()
+        PremiumVoice.stop()
         super.onDestroy()
     }
 
@@ -376,8 +380,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             val result = tts?.setLanguage(currentInputLocale)
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
                 ttsReady = false
-                Toast.makeText(this, "TTS language not supported. Please install TTS data.", Toast.LENGTH_LONG).show()
-                conversationText.text = "TTS language not supported. Please install TTS data."
+                showStatus("TTS language not supported. Please install TTS data.")
             } else {
                 // Apply the caregiver-configured speech rate (slow / normal / fast).
                 val settings = CaregiverRulesStore(this).load()
@@ -387,16 +390,11 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 // the service will greet her on its own after the first voice detection.
                 if (!hasGreetedOnThisLaunch && settings.timedListeningHours <= 0) {
                     hasGreetedOnThisLaunch = true
-                    val greeting = if (currentInputLocale.language == "ru")
-                        "Привет! Я здесь. Нажмите кнопку «Говорить», когда будете готовы."
-                    else
-                        "Hello! I'm here. Tap the Talk button when you're ready to chat."
-                    speakReply(greeting)
+                    speakWelcomeGreeting()
                 }
             }
         } else {
-            Toast.makeText(this, "Text-to-Speech initialization failed. Please enable TTS in device settings.", Toast.LENGTH_LONG).show()
-            conversationText.text = "TTS initialization failed. Please enable TTS in device settings."
+            showStatus("TTS initialization failed. Please enable TTS in device settings.")
         }
     }
 
@@ -404,6 +402,145 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
      * Confirms RECORD_AUDIO is granted before starting speech recognition, requesting it at
      * runtime if needed (required on Android 6.0+; speech recognition silently fails without it).
      */
+    private fun isRu() = currentInputLocale.language == "ru"
+
+    /** Start a flowing conversation: listen, reply, then listen again until stopped. */
+    private fun startConversation() {
+        conversationActive = true
+        updateTalkButtonLabel()
+        // Jump to the Chat tab so Mom can see the conversation as it happens.
+        if (::bottomNav.isInitialized) bottomNav.selectedItemId = R.id.nav_chat
+        ensureMicPermissionThenTalk()
+    }
+
+    /** Wire the bottom navigation bar: Home / Chat / Settings / Language. */
+    private fun setupBottomNav() {
+        bottomNav = findViewById(R.id.bottomNav)
+        val homePanel = findViewById<android.view.View>(R.id.homePanel)
+        val chatPanel = findViewById<android.view.View>(R.id.conversationCard)
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    homePanel.visibility = android.view.View.VISIBLE
+                    chatPanel.visibility = android.view.View.GONE
+                    true
+                }
+                R.id.nav_chat -> {
+                    homePanel.visibility = android.view.View.GONE
+                    chatPanel.visibility = android.view.View.VISIBLE
+                    true
+                }
+                R.id.nav_settings -> {
+                    // Caregiver settings live on their own PIN-gated page now (off the home screen).
+                    startActivity(Intent(this, PinActivity::class.java))
+                    false  // keep the current tab highlighted
+                }
+                R.id.nav_language -> {
+                    showLanguageChooser()
+                    false
+                }
+                else -> false
+            }
+        }
+        bottomNav.selectedItemId = R.id.nav_home
+    }
+
+    private fun showLanguageChooser() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Language / Язык")
+            .setItems(arrayOf("English", "Русский")) { _, which ->
+                currentInputLocale = if (which == 1) Locale("ru", "RU") else Locale.US
+                if (ttsReady) tts?.setLanguage(currentInputLocale)
+                updateTalkButtonLabel()
+                findViewById<TextView>(R.id.homeGreeting)?.text = if (isRu())
+                    "Здравствуйте 🙂\nНажмите «Говорить» и просто скажите —\nя рядом, чтобы составить вам компанию."
+                else
+                    "Hello 🙂\nTap Talk and just speak —\nI'm here to keep you company."
+                Toast.makeText(this, if (which == 1) "Язык: Русский" else "Language: English", Toast.LENGTH_SHORT).show()
+            }
+            .show()
+    }
+
+    /** End the conversation loop (back to idle). */
+    private fun stopConversation() {
+        conversationActive = false
+        updateTalkButtonLabel()
+    }
+
+    private fun updateTalkButtonLabel() {
+        talkButton.text = when {
+            conversationActive && isRu() -> "⏹  Стоп"
+            conversationActive          -> "⏹  Stop"
+            isRu()                      -> "🎤  Говорить"
+            else                        -> "🎤  Talk"
+        }
+    }
+
+    /** Append one turn to the on-screen transcript as a chat bubble and scroll to it. */
+    private fun appendTranscript(speaker: String, text: String) {
+        transcript.append(speaker).append(": ").append(text).append("\n\n")
+        val fromFriend = !speaker.equals("You", true) && !speaker.equals("Вы", true)
+        val density = resources.displayMetrics.density
+        fun dp(v: Int) = (v * density).toInt()
+
+        // A vertical holder: small speaker label, then the coloured bubble.
+        val holder = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            lp.topMargin = dp(8); lp.bottomMargin = dp(8)
+            layoutParams = lp
+            gravity = if (fromFriend) android.view.Gravity.START else android.view.Gravity.END
+        }
+
+        val label = TextView(this).apply {
+            this.text = speaker
+            textSize = 13f
+            setTextColor(
+                if (fromFriend) androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.mc_accent)
+                else androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.mc_text_hint)
+            )
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            lp.leftMargin = dp(12); lp.rightMargin = dp(12); lp.bottomMargin = dp(3)
+            layoutParams = lp
+        }
+
+        val bubble = TextView(this).apply {
+            this.text = text
+            textSize = 20f
+            setTextColor(androidx.core.content.ContextCompat.getColor(this@MainActivity, R.color.mc_text_primary))
+            setLineSpacing(0f, 1.2f)
+            setBackgroundResource(if (fromFriend) R.drawable.bg_bubble_friend else R.drawable.bg_bubble_user)
+            setPadding(dp(18), dp(14), dp(18), dp(14))
+            val lp = android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+            // Cap width so long replies wrap into a bubble instead of a full-width band.
+            maxWidth = (resources.displayMetrics.widthPixels * 0.82f).toInt()
+            layoutParams = lp
+        }
+
+        holder.addView(label)
+        holder.addView(bubble)
+        chatBubbles.addView(holder)
+        chatScroll.post { chatScroll.fullScroll(android.view.View.FOCUS_DOWN) }
+    }
+
+    /** Show a short status/error message: a Friendai bubble plus a toast so it's never missed. */
+    private fun showStatus(message: String) {
+        runOnUiThread {
+            if (::chatBubbles.isInitialized) appendTranscript("Friendai", message)
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+        }
+    }
+
     private fun ensureMicPermissionThenTalk() {
         if (isRunningInTest()) return
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
@@ -435,7 +572,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                         "Microphone permission is needed so your AI companion can hear you. Tap Talk again to allow it.",
                         Toast.LENGTH_LONG
                     ).show()
-                    conversationText.text = "Microphone permission is needed to talk with your AI companion."
+                    showStatus("Microphone permission is needed to talk with your AI companion.")
                 }
             }
             REQ_CODE_RECORD_AUDIO_FOR_TIMED_LISTENING -> {
@@ -476,7 +613,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             startActivityForResult(intent, REQ_CODE_SPEECH_INPUT)
         } catch (e: Exception) {
             Toast.makeText(this, "Speech recognition not supported. Please install the Google app or enable voice input in device settings.", Toast.LENGTH_LONG).show()
-            conversationText.text = "Speech recognition not supported. Please install the Google app or enable voice input."
+            showStatus("Speech recognition not supported. Please install the Google app or enable voice input.")
         }
     }
 
@@ -504,11 +641,14 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     if (ttsReady) tts?.setLanguage(currentInputLocale)
                     handleUserMessage(userMsg)
                 } else {
+                    // Nothing heard — end the loop so we don't re-open the mic on silence.
+                    stopConversation()
                     Toast.makeText(this, "I didn't catch that. Tap Talk to try again.", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                Toast.makeText(this, "Could not recognize speech. Please try again.", Toast.LENGTH_LONG).show()
-                conversationText.text = "Could not recognize speech. Please tap Talk to try again."
+                // Cancelled or error — stop the loop; keep the transcript on screen.
+                stopConversation()
+                Toast.makeText(this, "Tap Talk when you'd like to speak again.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -519,30 +659,36 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
      * and displays the reply, and escalates to the help screen when needed.
      */
     private fun handleUserMessage(userMsg: String) {
-        showClosedCaption(
-            if (currentInputLocale.language == "ru") "Вы: $userMsg" else "You: $userMsg"
-        )
+        val youLabel = if (isRu()) "Вы" else "You"
 
         val monetization = MonetizationManager(this)
         if (!monetization.canUseAi()) {
             val msg = "You've had ${MonetizationManager.FREE_DAILY_LIMIT} AI conversations today — your free daily limit. " +
                 "Ask your caregiver about upgrading to VIP for unlimited replies, or I'll be back tomorrow!"
-            conversationText.text = msg
+            stopConversation()
+            appendTranscript("Friendai", msg)
             speakReply(msg)
             return
         }
 
-        val youLabel = if (currentInputLocale.language == "ru") "Вы" else "You"
-        val aiLabel  = if (currentInputLocale.language == "ru") "Ответ" else "AI"
-        conversationText.text = "$youLabel: $userMsg\n$aiLabel: …"
+        // Show Mom's line in the running transcript right away.
+        appendTranscript(youLabel, userMsg)
         playSoundEffect()
         animateEqualizer(true)
 
         val settings = CaregiverRulesStore(this).load()
         val recentConversation = recentTurns.joinToString("\n")
+        // Route by the key the caregiver entered (Claude "sk-ant-" vs Gemini), then a proxy
+        // backend, then any key bundled at build time; otherwise the offline engine.
+        val key = settings.geminiApiKey
         val client = when {
-            settings.geminiApiKey.isNotBlank() -> GeminiAiClient(settings.geminiApiKey, activityEngine, LocalAiClient(activityEngine))
+            key.startsWith("sk-ant-") -> AnthropicAiClient(key, activityEngine, LocalAiClient(activityEngine))
+            key.isNotBlank() -> GeminiAiClient(key, activityEngine, LocalAiClient(activityEngine))
             settings.backendUrl.isNotBlank() -> ProxyAiClient(settings.backendUrl, activityEngine, LocalAiClient(activityEngine))
+            BuildConfig.DEFAULT_ANTHROPIC_KEY.isNotBlank() ->
+                AnthropicAiClient(BuildConfig.DEFAULT_ANTHROPIC_KEY, activityEngine, LocalAiClient(activityEngine))
+            BuildConfig.DEFAULT_GEMINI_KEY.isNotBlank() ->
+                GeminiAiClient(BuildConfig.DEFAULT_GEMINI_KEY, activityEngine, LocalAiClient(activityEngine))
             else -> LocalAiClient(activityEngine)
         }
 
@@ -550,24 +696,16 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             monetization.incrementAiReply()
             runOnUiThread {
                 rememberTurn(userMsg, reply.text)
-                conversationText.text = "$youLabel: $userMsg\n$aiLabel: ${reply.text}"
-                // Scroll to the end so the newest part of the reply is visible.
-                val layout = conversationText.layout
-                if (layout != null) {
-                    val scrollDelta = layout.getLineBottom(conversationText.lineCount - 1) -
-                        conversationText.height - conversationText.scrollY
-                    if (scrollDelta > 0) conversationText.scrollBy(0, scrollDelta)
-                }
-                // Show the caption BEFORE TTS speaks so Mom can read along.
-                // (Previously it was shown in onDone, after speaking finished.)
-                showClosedCaption(
-                    if (currentInputLocale.language == "ru") "Ответ: ${reply.text}"
-                    else "AI: ${reply.text}",
-                    durationMs = 8000  // longer window for longer replies
-                )
+                appendTranscript("Friendai", reply.text)
                 speakReply(reply.text) {
                     animateEqualizer(false)
                     maybeEscalate(reply, activityEngine)
+                    // Keep the conversation flowing hands-free: listen again for Mom's next turn.
+                    if (conversationActive) {
+                        chatScroll.postDelayed({
+                            if (conversationActive) ensureMicPermissionThenTalk()
+                        }, 800)
+                    }
                 }
             }
         }
@@ -623,18 +761,56 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     /**
      * Speaks the AI reply using TTS and calls onDone when finished.
      */
-    private fun speakReply(text: String, onDone: (() -> Unit)? = null) {
-        // Nudge media volume to at least 60% if it's very low — elderly users often have
-        // phones on near-silent and miss AI replies entirely. We only raise, never lower.
+    /** True when the caregiver has opted into premium cloud voice (consumes credits). */
+    private fun premiumLiveVoiceEnabled(): Boolean =
+        getSharedPreferences("friendai_prefs", MODE_PRIVATE).getBoolean("premium_voice", false)
+
+    /** Raise media volume to ~55% if it's very low, so replies aren't missed. Never lowers it. */
+    private fun raiseVolumeIfLow() {
         runCatching {
             val am = getSystemService(AudioManager::class.java)
             val maxVol = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
             val curVol = am.getStreamVolume(AudioManager.STREAM_MUSIC)
             val minDesired = (maxVol * 0.55f).toInt()
-            if (curVol < minDesired) {
-                am.setStreamVolume(AudioManager.STREAM_MUSIC, minDesired, 0)
-            }
+            if (curVol < minDesired) am.setStreamVolume(AudioManager.STREAM_MUSIC, minDesired, 0)
         }
+    }
+
+    private fun speakReply(text: String, onDone: (() -> Unit)? = null) {
+        raiseVolumeIfLow()
+        // Premium cloud voice, only if the caregiver opted in and a key is bundled. Any failure
+        // falls straight back to the phone voice so Mom is never left in silence.
+        if (premiumLiveVoiceEnabled() && PremiumVoice.available()) {
+            PremiumVoice.speak(applicationContext, text, PremiumVoice.VOICE_DEFAULT, onDone) {
+                speakWithPhoneVoice(text, onDone)
+            }
+        } else {
+            speakWithPhoneVoice(text, onDone)
+        }
+    }
+
+    /**
+     * The very first thing Mom hears. Plays a pre-recorded premium greeting bundled in the app
+     * (zero runtime cost, always a warm human-quality voice); if no premium key is bundled, falls
+     * back to speaking the greeting with the phone voice.
+     */
+    private fun speakWelcomeGreeting() {
+        raiseVolumeIfLow()
+        val ru = currentInputLocale.language == "ru"
+        if (PremiumVoice.available()) {
+            val res = if (ru) R.raw.greeting_ru else R.raw.greeting_en
+            PremiumVoice.playRaw(applicationContext, res, null)
+        } else {
+            val greeting = if (ru)
+                "Привет! Я здесь. Нажмите кнопку «Говорить», когда будете готовы."
+            else
+                "Hello! I'm here. Tap the Talk button when you're ready to chat."
+            speakWithPhoneVoice(greeting, null)
+        }
+    }
+
+    /** Speak with the device's built-in text-to-speech (free, unlimited, offline). */
+    private fun speakWithPhoneVoice(text: String, onDone: (() -> Unit)?) {
         if (ttsReady) {
             if (onDone != null) {
                 tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
@@ -648,8 +824,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                 tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "ai_reply")
             }
         } else {
-            Toast.makeText(this, "TTS not ready. Please enable TTS in device settings.", Toast.LENGTH_LONG).show()
-            conversationText.text = "TTS not ready. Please enable TTS in device settings."
+            showStatus("TTS not ready. Please enable TTS in device settings.")
             onDone?.invoke()
         }
     }

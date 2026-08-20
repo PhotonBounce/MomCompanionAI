@@ -31,7 +31,7 @@
     <string name="rules_prompt">Rules Prompt</string>
     <string name="mom_profile_notes">Mom Profile Notes</string>
     <string name="basic_vocabulary">Basic Vocabulary (English / Russian)</string>
-    <string name="prompt_topics">Prompt Topics (one per line, e.g. Moscow, cats, flowers)</string>
+    <string name="prompt_topics">Prompt Topics (one per line, e.g. the garden, cats, flowers)</string>
     <string name="pin">PIN</string>
     <string name="caregiver_name">Caregiver Name</string>
     <string name="caregiver_phone">Caregiver Phone</string>

@@ -17,10 +17,27 @@ if (keystorePropsFile.exists()) {
     keystorePropsFile.withInputStream { keystoreProps.load(it) }
 }
 
+// Optional bundled Gemini key so the app uses real AI out-of-the-box, with no caregiver
+// setup. Read from gemini.properties at the repo root (git-ignored, never committed).
+// If the file is absent the field is empty and the app falls back to the offline engine,
+// exactly as before. A caregiver-entered key in Settings always takes precedence.
+def geminiPropsFile = rootProject.file("gemini.properties")
+def geminiProps = new Properties()
+if (geminiPropsFile.exists()) { geminiPropsFile.withInputStream { geminiProps.load(it) } }
+def defaultGeminiKey = geminiProps.getProperty("geminiApiKey", "")
+// Optional bundled Claude/Anthropic key (property "anthropicApiKey", starts with "sk-ant-").
+def defaultAnthropicKey = geminiProps.getProperty("anthropicApiKey", "")
+// Optional bundled ElevenLabs key (property "elevenLabsApiKey") for premium cloud voice.
+def defaultElevenLabsKey = geminiProps.getProperty("elevenLabsApiKey", "")
+
 android {
     namespace 'com.friendai'
-    compileSdk 35
-    buildToolsVersion "35.0.0"
+    compileSdk 36
+    buildToolsVersion "36.0.0"
+
+    buildFeatures {
+        buildConfig true
+    }
 
     if (keystorePropsFile.exists()) {
         signingConfigs {
@@ -36,10 +53,13 @@ android {
     defaultConfig {
         applicationId "com.friendai"
         minSdk 24
-        targetSdk 35
-        versionCode 14
-        versionName "2.3"
+        targetSdk 36
+        versionCode 17
+        versionName "2.6"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "DEFAULT_GEMINI_KEY", "\"${defaultGeminiKey}\""
+        buildConfigField "String", "DEFAULT_ANTHROPIC_KEY", "\"${defaultAnthropicKey}\""
+        buildConfigField "String", "DEFAULT_ELEVENLABS_KEY", "\"${defaultElevenLabsKey}\""
     }
 
     buildTypes {
@@ -79,12 +99,12 @@ play {
 }
 
 dependencies {
-    implementation "androidx.core:core-ktx:1.15.0"    // requires compileSdk 35; upgraded with AGP 8.3
+    implementation "androidx.core:core-ktx:1.15.0"
     implementation "com.google.android.material:material:1.12.0"
     implementation "androidx.appcompat:appcompat:1.7.0"
-    // Google Play Billing — 7.x is compatible with the current VipActivity API surface.
-    // 9.x has breaking changes that would require significant VipActivity refactor.
-    implementation 'com.android.billingclient:billing-ktx:7.1.1'
+    // Google Play Billing 8.x — required by Google Play (>= 8.0.0). The 8.0 upgrade changed
+    // queryProductDetailsAsync to return a QueryProductDetailsResult (handled in VipActivity).
+    implementation 'com.android.billingclient:billing-ktx:8.0.0'
 
     // AndroidX Test and Espresso for UI tests and screenshots
     androidTestImplementation 'androidx.test:core:1.7.0'

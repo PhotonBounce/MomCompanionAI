@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#12161F">
+<title>MomCompanion — a gentle web companion</title>
+<style>
+  :root{
+    --bg:#F4EEE5; --surface:#FCF8F2; --ink:#23272F; --muted:#5E6470;
+    --coral:#D2543C; --coral-ink:#fff; --teal:#2E8C7E; --warn:#C64A2E;
+    --line:rgba(35,39,47,.12); --shadow:rgba(35,39,47,.16);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#11151E; --surface:#1B2130; --ink:#ECE7DE; --muted:#98A1B0;
+      --coral:#F0806C; --coral-ink:#1a1005; --teal:#4FC1B4; --warn:#F0806C;
+      --line:rgba(255,255,255,.10); --shadow:rgba(0,0,0,.5); }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:20px;line-height:1.5;-webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;min-height:100dvh;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:16px 18px;border-bottom:1px solid var(--line);}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.15rem;letter-spacing:-.01em}
+  .brand .heart{color:var(--coral)}
+  .iconbtn{background:var(--surface);border:1px solid var(--line);color:var(--ink);
+    border-radius:12px;padding:9px 13px;font-size:1rem;cursor:pointer}
+  .iconbtn:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+
+  main{flex:1;display:flex;flex-direction:column;max-width:760px;width:100%;margin:0 auto;padding:14px 18px 0}
+  .transcript{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;padding:8px 2px 16px}
+  .bubble{max-width:88%;padding:14px 18px;border-radius:20px;box-shadow:0 3px 12px var(--shadow);font-size:1.15rem}
+  .me{align-self:flex-end;background:var(--surface);border:1px solid var(--line);border-bottom-right-radius:6px}
+  .app{align-self:flex-start;background:color-mix(in srgb,var(--teal) 15%,var(--surface));
+    border:1px solid color-mix(in srgb,var(--teal) 32%,var(--line));border-bottom-left-radius:6px}
+  .who{display:block;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+
+  .alert{align-self:stretch;max-width:100%;background:color-mix(in srgb,var(--warn) 16%,var(--surface));
+    border:2px solid var(--warn);border-radius:18px;padding:16px 18px}
+  .alert h3{margin:.1em 0 .3em;color:var(--warn);font-size:1.15rem}
+  .alert .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+
+  .dock{position:sticky;bottom:0;background:linear-gradient(to top,var(--bg) 78%,transparent);
+    padding:12px 0 max(16px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+  .talk{border:none;border-radius:22px;background:var(--coral);color:var(--coral-ink);
+    font-size:1.5rem;font-weight:800;padding:26px;cursor:pointer;box-shadow:0 12px 26px color-mix(in srgb,var(--coral) 40%,transparent);
+    display:flex;align-items:center;justify-content:center;gap:14px;transition:transform .1s ease}
+  .talk:active{transform:scale(.98)}
+  .talk:focus-visible{outline:4px solid var(--teal);outline-offset:3px}
+  .talk.listening{animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 12px 26px color-mix(in srgb,var(--coral) 40%,transparent)}
+    50%{box-shadow:0 0 0 14px color-mix(in srgb,var(--coral) 22%,transparent)}}
+  .mic{width:26px;height:26px;flex:none}
+  .typerow{display:flex;gap:8px}
+  .typerow input{flex:1;font-size:1.05rem;padding:14px 16px;border-radius:14px;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+  .typerow input:focus-visible{outline:3px solid var(--teal);outline-offset:1px}
+  .send{border:none;border-radius:14px;background:var(--teal);color:#fff;font-weight:700;padding:0 20px;font-size:1.05rem;cursor:pointer}
+  .help{background:var(--surface);border:1px solid var(--line);color:var(--ink);border-radius:14px;
+    padding:14px;font-size:1.1rem;font-weight:700;cursor:pointer}
+  .callbtn{background:var(--coral);color:var(--coral-ink);text-decoration:none;border:none;border-radius:12px;
+    padding:12px 18px;font-weight:800;font-size:1.05rem;display:inline-flex;align-items:center;gap:8px}
+  .ghost{background:var(--surface);border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer;text-decoration:none}
+  .hint{color:var(--muted);font-size:.85rem;text-align:center}
+
+  dialog{border:none;border-radius:20px;padding:0;max-width:420px;width:92%;background:var(--surface);color:var(--ink);box-shadow:0 30px 80px var(--shadow)}
+  dialog::backdrop{background:rgba(0,0,0,.5)}
+  .sheet{padding:22px}
+  .sheet h2{margin:0 0 6px}
+  .field{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+  .field label{font-size:.9rem;color:var(--muted);font-weight:600}
+  .field input{padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:1.05rem}
+  .sheet .row{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="heart">♥</span> MomCompanion</div>
+  <div>
+    <button class="iconbtn" id="langBtn" title="Language" aria-label="Switch language">EN</button>
+    <button class="iconbtn" id="setBtn" title="Caregiver settings" aria-label="Caregiver settings">⚙</button>
+  </div>
+</header>
+
+<main>
+  <div class="transcript" id="transcript" aria-live="polite"></div>
+
+  <div class="dock">
+    <button class="talk" id="talkBtn" aria-label="Talk">
+      <svg class="mic" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3z"/><path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21a1 1 0 1 0 2 0v-3.08A7 7 0 0 0 19 11z"/></svg>
+      <span id="talkLabel">Tap to talk</span>
+    </button>
+    <div class="typerow">
+      <input id="typeInput" placeholder="…or type here" autocomplete="off">
+      <button class="send" id="sendBtn">Send</button>
+    </div>
+    <button class="help" id="helpBtn">📞 Help &amp; family</button>
+    <p class="hint" id="hint">Tap “Talk”, then speak. Best on Chrome.</p>
+  </div>
+</main>
+
+<dialog id="setDlg">
+  <div class="sheet">
+    <h2>Caregiver settings</h2>
+    <p style="color:var(--muted);margin:.2em 0 0">Set who Mom can reach with one tap.</p>
+    <div class="field"><label for="cName">Family contact name</label><input id="cName" placeholder="e.g. Anna"></div>
+    <div class="field"><label for="cPhone">Phone number</label><input id="cPhone" type="tel" placeholder="e.g. +1 555 0100"></div>
+    <div class="row">
+      <button class="ghost" id="setCancel">Cancel</button>
+      <button class="callbtn" id="setSave">Save</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(function(){
+  "use strict";
+  var LANG = localStorage.getItem("mc_lang") || "en";     // "en" | "ru"
+  var contact = JSON.parse(localStorage.getItem("mc_contact")||"null") || {name:"", phone:""};
+  var lastAppReply = "";
+
+  var elT = document.getElementById("transcript");
+  var talkBtn = document.getElementById("talkBtn");
+  var talkLabel = document.getElementById("talkLabel");
+  var hint = document.getElementById("hint");
+  var langBtn = document.getElementById("langBtn");
+
+  var T = {
+    en:{ tap:"Tap to talk", listening:"Listening… tap to stop", hint:"Tap “Talk”, then speak. Best on Chrome.",
+         you:"You", app:"MomCompanion", callFamily:"Call family", pause:"I’m okay",
+         noContact:"Ask your caregiver to add a family number in settings (⚙).",
+         helpTitle:"Reach your family", helpBody:"Tap the button to call the person who looks after you." },
+    ru:{ tap:"Нажмите, чтобы говорить", listening:"Слушаю… нажмите, чтобы остановить", hint:"Нажмите «Говорить» и скажите. Лучше в Chrome.",
+         you:"Вы", app:"Компаньон", callFamily:"Позвонить семье", pause:"Всё хорошо",
+         noContact:"Попросите близкого добавить номер в настройках (⚙).",
+         helpTitle:"Связь с семьёй", helpBody:"Нажмите кнопку, чтобы позвонить тому, кто о вас заботится." }
+  };
+  function t(k){ return T[LANG][k]; }
+
+  function setLang(l){ LANG=l; localStorage.setItem("mc_lang",l); langBtn.textContent=l.toUpperCase();
+    talkLabel.textContent=t("tap"); hint.textContent=t("hint"); }
+  langBtn.addEventListener("click", function(){ setLang(LANG==="en"?"ru":"en"); });
+
+  function esc(s){ return s.replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+
+  function addBubble(who, text, cls){
+    var b=document.createElement("div"); b.className="bubble "+cls;
+    b.innerHTML='<span class="who">'+esc(who)+'</span>'+esc(text);
+    elT.appendChild(b); elT.scrollTop=elT.scrollHeight;
+  }
+
+  function showAlert(kind){
+    var box=document.createElement("div"); box.className="alert";
+    var title = kind==="scam" ? (LANG==="ru"?"Осторожно — возможно, мошенник":"Careful — this could be a scam")
+                              : (LANG==="ru"?"Нужна помощь?":"Need help?");
+    var body  = kind==="scam" ? (LANG==="ru"?"Никогда не сообщайте коды, пароли или деньги по телефону.":"Never give codes, passwords, or money over the phone.")
+                              : (LANG==="ru"?"Давайте позовём вашу семью.":"Let’s reach your family.");
+    box.innerHTML='<h3>'+esc(title)+'</h3><div>'+esc(body)+'</div><div class="row"></div>';
+    var row=box.querySelector(".row");
+    row.appendChild(callEl());
+    var ok=document.createElement("button"); ok.className="ghost"; ok.textContent=t("pause");
+    ok.addEventListener("click",function(){ box.remove(); });
+    row.appendChild(ok);
+    elT.appendChild(box); elT.scrollTop=elT.scrollHeight;
+  }
+
+  function callEl(){
+    if(contact.phone){
+      var a=document.createElement("a"); a.className="callbtn"; a.href="tel:"+contact.phone.replace(/[^+\d]/g,"");
+      a.textContent="📞 "+t("callFamily")+(contact.name?(" · "+contact.name):"");
+      return a;
+    }
+    var b=document.createElement("button"); b.className="callbtn"; b.textContent="📞 "+t("callFamily");
+    b.addEventListener("click",function(){ openSettings(); });
+    return b;
+  }
+
+  /* ---------- The companion engine (compact, faithful to the app’s behaviour) ---------- */
+  function isRu(s){ return /[Ѐ-ӿ]/.test(s); }
+  function any(s, arr){ for(var i=0;i<arr.length;i++){ if(s.indexOf(arr[i])>=0) return true; } return false; }
+  function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+  var SCAM=["gift card","gift-card","itunes","google play card","steam card","amazon card","wire","western union","moneygram","bitcoin","crypto","password","pin code","secret code","verification code","one-time code","one time code","otp","send money","send cash","transfer money","bank account","social security","routing number","account number","remote access","anydesk","teamviewer",
+    "код","подарочн","карту оплаты","перевести деньги","перевод денег","пароль","банковск","биткоин","western union","удалённый доступ","удаленный доступ"];
+  var EMERG=["can't breathe","cant breathe","can’t breathe","chest pain","i fell","i've fallen","ive fallen","i have fallen","call an ambulance","call 911","emergency","help me",
+    "не могу дышать","боль в груди","я упала","я упал","вызовите скорую","скорую","на помощь","помогите"];
+  var LONELY=["lonely","alone","nobody","no one","miss you","i miss","sad","depressed","down","blue","empty",
+    "одиноко","одна","никого","скучаю","грустно","тоскую","плохо на душе"];
+  var GREET=["hello","hi ","hey","good morning","good afternoon","good evening",
+    "привет","здравствуй","доброе утро","добрый день","добрый вечер"];
+  var HOW=["how are you","how do you do","как дела","как ты","как вы"];
+  var JOKE=["joke","funny","make me laugh","шутк","анекдот","рассмеши"];
+  var STORY=["story","tell me about","расскажи","история","сказк"];
+  var HEALTH=["not feeling well","unwell","dizzy","headache","tired","hurts","pain","мне плохо","кружится","болит","устала","устал","голова"];
+  var MUSIC=["music","song","sing","музык","песн","спой"];
+  var LOVE=["love you","family","grandchild","children","son","daughter","люблю","семья","внук","дети","сын","дочь"];
+  var THANKS=["thank","спасибо","благодар"];
+  var BYE=["bye","goodbye","good night","see you","пока","до свидания","спокойной ночи"];
+
+  function respond(raw){
+    var s=(" "+raw.toLowerCase()+" ");
+    var ru = isRu(raw) || LANG==="ru";
+    var kind=null, text;
+
+    if(any(s,SCAM)){ kind="scam";
+      text = ru ? "Пожалуйста, не сообщайте никакие коды, пароли или деньги — это может быть мошенник. Давайте остановимся. Я могу позвонить вашей семье."
+                : "Please don’t share any codes, passwords, or money — this may be a scam. Let’s pause for a moment. I can call your family right now.";
+    }
+    else if(any(s,EMERG)){ kind="emergency";
+      text = ru ? "Я вас слышу. Пожалуйста, нажмите кнопку, чтобы позвонить семье. Если это опасно для жизни — звоните 911."
+                : "I hear you. Please tap the button to call your family. If this feels life-threatening, call 911 right away.";
+    }
+    else if(any(s,LONELY)){
+      text = ru ? pick(["Я рядом, и я никуда не ухожу. Расскажите мне, что у вас на душе.","Вы не одни. Я здесь, чтобы выслушать вас, сколько нужно.","Мне жаль, что вам тяжело. Давайте побудем вместе — расскажите про свой день."])
+                : pick(["I’m right here with you, and I’m not going anywhere. Tell me what’s on your heart.","You are not alone. I’m here to listen for as long as you like.","I’m sorry it feels heavy today. Let’s sit together — tell me about your day."]);
+    }
+    else if(any(s,GREET)){
+      text = ru ? pick(["Здравствуйте! Так рада вас слышать. Как вы сегодня?","Привет! Я здесь. О чём поговорим?"])
+                : pick(["Hello! It’s so good to hear you. How are you today?","Hi there! I’m right here. What shall we talk about?"]);
+    }
+    else if(any(s,HOW)){
+      text = ru ? "У меня всё хорошо, спасибо, что спросили. А как вы себя чувствуете?"
+                : "I’m doing well, thank you for asking. How are you feeling today?";
+    }
+    else if(any(s,JOKE)){
+      text = ru ? pick(["Почему помидор покраснел? Потому что увидел, как салат раздевается! 🙂","Что сказал ноль восьмёрке? «Красивый ремень!» 🙂"])
+                : pick(["Why did the tomato turn red? Because it saw the salad dressing! 🙂","What did the zero say to the eight? “Nice belt!” 🙂"]);
+    }
+    else if(any(s,STORY)){
+      text = ru ? "Однажды в маленькой деревне жила добрая женщина, чей сад цвёл круглый год, потому что она разговаривала с каждым цветком. Соседи говорили, что её доброта и заставляла их цвести. Хотите, расскажу ещё?"
+                : "Once, in a little village, there was a kind woman whose garden bloomed all year — because she spoke gently to every flower. Neighbors said it was her kindness that kept them blooming. Would you like another?";
+    }
+    else if(any(s,HEALTH)){
+      text = ru ? "Мне жаль, что вы неважно себя чувствуете. Попейте воды и отдохните. Хотите, я помогу позвонить вашей семье?"
+                : "I’m sorry you’re not feeling your best. Try a little water and some rest. Would you like me to help you call your family?";
+    }
+    else if(any(s,MUSIC)){
+      text = ru ? "Музыка — прекрасная идея! Какая песня вам всегда поднимает настроение?"
+                : "Music is a lovely idea! What’s a song that always lifts your spirits?";
+    }
+    else if(any(s,LOVE)){
+      text = ru ? "Как тепло это слышать. Ваша семья вас очень любит. Расскажите мне о них?"
+                : "That’s so warm to hear. Your family loves you dearly. Tell me about them?";
+    }
+    else if(any(s,THANKS)){
+      text = ru ? "Всегда пожалуйста. Мне очень приятно быть рядом." : "You’re very welcome. I’m so glad to be here with you.";
+    }
+    else if(any(s,BYE)){
+      text = ru ? "Берегите себя. Я буду здесь, когда захотите поговорить." : "Take good care. I’ll be right here whenever you’d like to talk.";
+    }
+    else {
+      text = ru ? pick(["Я вас слушаю. Не торопитесь — я никуда не ухожу.","Расскажите мне больше. Мне важно каждое ваше слово."])
+                : pick(["I’m listening. Take your time — I’m not going anywhere.","Tell me more. Every word you say matters to me."]);
+    }
+    return {text:text, kind:kind};
+  }
+
+  /* ---------- Speech ---------- */
+  function speak(text){
+    if(!("speechSynthesis" in window)) return;
+    try{
+      window.speechSynthesis.cancel();
+      var u=new SpeechSynthesisUtterance(text);
+      u.lang = (isRu(text)||LANG==="ru") ? "ru-RU" : "en-US";
+      u.rate=0.98; u.pitch=1.0;
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+
+  function handle(input){
+    input=(input||"").trim();
+    if(!input) return;
+    addBubble(t("you"), input, "me");
+    var r=respond(input);
+    lastAppReply=r.text;
+    addBubble(t("app"), r.text, "app");
+    if(r.kind) showAlert(r.kind);
+    speak(r.text);
+  }
+
+  /* text input */
+  var typeInput=document.getElementById("typeInput");
+  document.getElementById("sendBtn").addEventListener("click",function(){ handle(typeInput.value); typeInput.value=""; typeInput.focus(); });
+  typeInput.addEventListener("keydown",function(e){ if(e.key==="Enter"){ handle(typeInput.value); typeInput.value=""; } });
+
+  /* voice input */
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec=null, listening=false;
+  if(SR){
+    rec=new SR(); rec.continuous=false; rec.interimResults=false;
+    rec.onresult=function(e){ var txt=e.results[0][0].transcript; handle(txt); };
+    rec.onend=function(){ listening=false; talkBtn.classList.remove("listening"); talkLabel.textContent=t("tap"); };
+    rec.onerror=function(){ listening=false; talkBtn.classList.remove("listening"); talkLabel.textContent=t("tap"); };
+  } else {
+    hint.textContent = (LANG==="ru"?"Голосовой ввод не поддерживается в этом браузере — печатайте ниже.":"Voice isn’t supported in this browser — type below instead.");
+  }
+  talkBtn.addEventListener("click",function(){
+    if(!rec){ typeInput.focus(); return; }
+    if(listening){ try{rec.stop();}catch(e){} return; }
+    try{
+      rec.lang = LANG==="ru" ? "ru-RU" : "en-US";
+      rec.start(); listening=true;
+      talkBtn.classList.add("listening"); talkLabel.textContent=t("listening");
+    }catch(e){ listening=false; }
+  });
+
+  /* help + settings */
+  document.getElementById("helpBtn").addEventListener("click",function(){ showAlert("help"); });
+  var dlg=document.getElementById("setDlg");
+  function openSettings(){ document.getElementById("cName").value=contact.name||""; document.getElementById("cPhone").value=contact.phone||""; dlg.showModal(); }
+  document.getElementById("setBtn").addEventListener("click",openSettings);
+  document.getElementById("setCancel").addEventListener("click",function(){ dlg.close(); });
+  document.getElementById("setSave").addEventListener("click",function(){
+    contact={ name:document.getElementById("cName").value.trim(), phone:document.getElementById("cPhone").value.trim() };
+    localStorage.setItem("mc_contact",JSON.stringify(contact)); dlg.close();
+  });
+
+  /* boot */
+  setLang(LANG);
+  addBubble(t("app"), LANG==="ru" ? "Здравствуйте! Я здесь, чтобы поговорить с вами. Нажмите «Говорить» или напишите."
+                                  : "Hello! I’m here to keep you company. Tap “Talk”, or type to me anytime.", "app");
+})();
+</script>
+</body>
+</html>

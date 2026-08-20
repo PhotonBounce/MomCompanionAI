@@ -41,6 +41,7 @@ class RulesActivity : Activity() {
     private lateinit var textSizeSpinner: android.widget.Spinner
     private lateinit var listeningHoursSpinner: android.widget.Spinner
     private lateinit var ttsSpeedSpinner: android.widget.Spinner
+    private lateinit var premiumVoiceCheck: android.widget.CheckBox
     private val listeningHoursOptions = listOf(0, 1, 2, 3, 4, 6, 8, 10, 12)
     /** Maps spinner position → TTS speech rate multiplier. Slow = 0.7, Normal = 1.0, Fast = 1.3. */
     private val ttsSpeedOptions = listOf(0.7f, 1.0f, 1.3f)
@@ -113,6 +114,23 @@ class RulesActivity : Activity() {
             val closestIndex = ttsSpeedOptions.indexOfFirst { Math.abs(it - savedRate) < 0.2f }.let { if (it >= 0) it else 1 }
             setSelection(closestIndex)
             contentDescription = "AI voice speed selector"
+        }
+
+        // Premium cloud voice: a warm, human-quality voice for every reply. Off by default
+        // because it consumes cloud credits; the free on-device voice is used when unchecked.
+        // (The welcome greeting is always premium — it's pre-recorded and costs nothing.)
+        val premiumVoiceLabel = TextView(this).apply {
+            text = "Premium AI Voice:"
+            textSize = userTextSize
+            setPadding(0, dp(10), 0, dp(4))
+        }
+        premiumVoiceCheck = android.widget.CheckBox(this).apply {
+            text = "Use the warm premium voice for every reply (uses cloud credits). " +
+                "Leave off to use the free built-in phone voice."
+            textSize = userTextSize - 2f
+            isChecked = getSharedPreferences("friendai_prefs", MODE_PRIVATE)
+                .getBoolean("premium_voice", false)
+            contentDescription = "Premium AI voice toggle"
         }
 
         // Timed listening: lets the app actively listen for/converse with Mom WITHOUT
@@ -308,6 +326,8 @@ class RulesActivity : Activity() {
         root.addView(textSizeSpinner, fullWidthWrap())
         root.addView(ttsSpeedLabel, fullWidthWrap())
         root.addView(ttsSpeedSpinner, fullWidthWrap())
+        root.addView(premiumVoiceLabel, fullWidthWrap())
+        root.addView(premiumVoiceCheck, fullWidthWrap())
         root.addView(listeningHoursLabel, fullWidthWrap())
         root.addView(listeningHoursDescription, fullWidthWrap())
         root.addView(listeningHoursSpinner, fullWidthWrap())
@@ -318,7 +338,7 @@ class RulesActivity : Activity() {
         root.addView(profileInput, fullWidthWrap())
         root.addView(label("Basic Vocabulary (English / Russian)"))
         root.addView(vocabularyInput, fullWidthWrap())
-        root.addView(label("Prompt Topics (one per line, e.g. 'Moscow', 'cats', 'flowers')"))
+        root.addView(label("Prompt Topics (one per line, e.g. 'the garden', 'cats', 'flowers')"))
         root.addView(promptTopicsInput, fullWidthWrap())
         root.addView(privacyNotice())
         root.addView(label("PIN"))
@@ -411,6 +431,11 @@ class RulesActivity : Activity() {
         val prefs = getSharedPreferences("onboarding", MODE_PRIVATE).edit()
         prefs.putFloat("textSize", textSizePref)
         prefs.apply()
+
+        // Persist the premium-voice choice (read by MainActivity.speakReply).
+        getSharedPreferences("friendai_prefs", MODE_PRIVATE).edit()
+            .putBoolean("premium_voice", premiumVoiceCheck.isChecked)
+            .apply()
 
         rulesStore.save(
             CaregiverSettings(

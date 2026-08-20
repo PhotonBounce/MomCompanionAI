@@ -630,7 +630,7 @@ class TimedListeningService : Service(), TextToSpeech.OnInitListener {
         private const val RETRY_DELAY_MS = 1500L
         private const val POST_REPLY_DELAY_MS = 600L
         private const val PUSH_TO_TALK_YIELD_MS = 20_000L
-        private const val MAX_RECENT_TURNS = 6
+        private const val MAX_RECENT_TURNS = 30
         /** Spoken warning fires this many ms before the listening window expires. */
         private const val WARNING_BEFORE_END_MS = 5 * 60 * 1000L
         /**
