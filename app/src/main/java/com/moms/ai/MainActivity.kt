@@ -14,8 +14,10 @@ import java.util.Locale
 import com.friendai.CompanionEngine
 import com.friendai.CaregiverRulesStore
 import com.friendai.GeminiAiClient
+import com.friendai.AnthropicAiClient
 import com.friendai.ProxyAiClient
 import com.friendai.LocalAiClient
+import com.friendai.BuildConfig
 import android.os.Bundle
 import android.widget.Button
 import android.widget.TextView
@@ -84,6 +86,15 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     /** Persistent engine so recentTopics/recentMoods/lastAIReply accumulate across push-to-talk turns. */
     private val activityEngine = CompanionEngine()
 
+    /** The full on-screen conversation transcript (You / Friendai turns), shown in the card. */
+    private val transcript = StringBuilder()
+
+    /**
+     * When true, the app keeps listening after each reply so a conversation flows hands-free:
+     * tap Talk once, then just speak back and forth. Tap Talk again (now "Stop") to end it.
+     */
+    private var conversationActive = false
+
     /**
      * Initializes the main UI, onboarding, and voice interaction.
      */
@@ -122,7 +133,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     vibrator?.vibrate(60)
                 }
             }
-            ensureMicPermissionThenTalk()
+            // Tap once to start a flowing conversation; tap again to stop it.
+            if (conversationActive) stopConversation() else startConversation()
         }
 
         // Wire up Call Caregiver button for accessibility
@@ -321,19 +333,9 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
         val prefs = getSharedPreferences("onboarding", MODE_PRIVATE)
         if (prefs.getBoolean("ai_key_hint_shown", false)) return
         prefs.edit().putBoolean("ai_key_hint_shown", true).apply()
-        conversationText.text =
-            "⚙️ Caregiver setup tip:\n\n" +
-            "The app works offline right now, but adding a FREE Gemini AI key makes " +
-            "conversation much smarter and more natural.\n\n" +
-            "How to add it:\n" +
-            "1. Tap the gear icon (top right)\n" +
-            "2. Enter your PIN (default: 1234)\n" +
-            "3. Scroll down to '🤖 Free AI Key (Gemini)'\n" +
-            "4. Paste your key and tap Save\n\n" +
-            "Get a free key at: aistudio.google.com/apikey\n" +
-            "(No credit card needed — it's completely free)\n\n" +
-            "Also fill in 'Profile Notes' with her name and favourite topics — " +
-            "the AI will personalise every reply."
+        // Intentionally do NOT dump setup instructions onto Mom's start screen — that turned
+        // the home page into a wall of text. Caregivers add the AI key in Settings (gear icon)
+        // instead; the start screen stays clean with just the conversation.
     }
 
     private fun isRunningInTest(): Boolean {
@@ -405,6 +407,42 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
      * Confirms RECORD_AUDIO is granted before starting speech recognition, requesting it at
      * runtime if needed (required on Android 6.0+; speech recognition silently fails without it).
      */
+    private fun isRu() = currentInputLocale.language == "ru"
+
+    /** Start a flowing conversation: listen, reply, then listen again until stopped. */
+    private fun startConversation() {
+        conversationActive = true
+        updateTalkButtonLabel()
+        ensureMicPermissionThenTalk()
+    }
+
+    /** End the conversation loop (back to idle). */
+    private fun stopConversation() {
+        conversationActive = false
+        updateTalkButtonLabel()
+    }
+
+    private fun updateTalkButtonLabel() {
+        talkButton.text = when {
+            conversationActive && isRu() -> "⏹  Стоп"
+            conversationActive          -> "⏹  Stop"
+            isRu()                      -> "🎤  Говорить"
+            else                        -> "🎤  Talk"
+        }
+    }
+
+    /** Append one turn to the on-screen transcript and scroll to the newest line. */
+    private fun appendTranscript(speaker: String, text: String) {
+        transcript.append(speaker).append(": ").append(text).append("\n\n")
+        conversationText.text = transcript.toString()
+        conversationText.post {
+            val layout = conversationText.layout ?: return@post
+            val delta = layout.getLineBottom(conversationText.lineCount - 1) -
+                conversationText.height - conversationText.scrollY
+            if (delta > 0) conversationText.scrollBy(0, delta)
+        }
+    }
+
     private fun ensureMicPermissionThenTalk() {
         if (isRunningInTest()) return
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) ==
@@ -505,11 +543,14 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
                     if (ttsReady) tts?.setLanguage(currentInputLocale)
                     handleUserMessage(userMsg)
                 } else {
+                    // Nothing heard — end the loop so we don't re-open the mic on silence.
+                    stopConversation()
                     Toast.makeText(this, "I didn't catch that. Tap Talk to try again.", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                Toast.makeText(this, "Could not recognize speech. Please try again.", Toast.LENGTH_LONG).show()
-                conversationText.text = "Could not recognize speech. Please tap Talk to try again."
+                // Cancelled or error — stop the loop; keep the transcript on screen.
+                stopConversation()
+                Toast.makeText(this, "Tap Talk when you'd like to speak again.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -520,30 +561,36 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
      * and displays the reply, and escalates to the help screen when needed.
      */
     private fun handleUserMessage(userMsg: String) {
-        showClosedCaption(
-            if (currentInputLocale.language == "ru") "Вы: $userMsg" else "You: $userMsg"
-        )
+        val youLabel = if (isRu()) "Вы" else "You"
 
         val monetization = MonetizationManager(this)
         if (!monetization.canUseAi()) {
             val msg = "You've had ${MonetizationManager.FREE_DAILY_LIMIT} AI conversations today — your free daily limit. " +
                 "Ask your caregiver about upgrading to VIP for unlimited replies, or I'll be back tomorrow!"
-            conversationText.text = msg
+            stopConversation()
+            appendTranscript("Friendai", msg)
             speakReply(msg)
             return
         }
 
-        val youLabel = if (currentInputLocale.language == "ru") "Вы" else "You"
-        val aiLabel  = if (currentInputLocale.language == "ru") "Ответ" else "AI"
-        conversationText.text = "$youLabel: $userMsg\n$aiLabel: …"
+        // Show Mom's line in the running transcript right away.
+        appendTranscript(youLabel, userMsg)
         playSoundEffect()
         animateEqualizer(true)
 
         val settings = CaregiverRulesStore(this).load()
         val recentConversation = recentTurns.joinToString("\n")
+        // Route by the key the caregiver entered (Claude "sk-ant-" vs Gemini), then a proxy
+        // backend, then any key bundled at build time; otherwise the offline engine.
+        val key = settings.geminiApiKey
         val client = when {
-            settings.geminiApiKey.isNotBlank() -> GeminiAiClient(settings.geminiApiKey, activityEngine, LocalAiClient(activityEngine))
+            key.startsWith("sk-ant-") -> AnthropicAiClient(key, activityEngine, LocalAiClient(activityEngine))
+            key.isNotBlank() -> GeminiAiClient(key, activityEngine, LocalAiClient(activityEngine))
             settings.backendUrl.isNotBlank() -> ProxyAiClient(settings.backendUrl, activityEngine, LocalAiClient(activityEngine))
+            BuildConfig.DEFAULT_ANTHROPIC_KEY.isNotBlank() ->
+                AnthropicAiClient(BuildConfig.DEFAULT_ANTHROPIC_KEY, activityEngine, LocalAiClient(activityEngine))
+            BuildConfig.DEFAULT_GEMINI_KEY.isNotBlank() ->
+                GeminiAiClient(BuildConfig.DEFAULT_GEMINI_KEY, activityEngine, LocalAiClient(activityEngine))
             else -> LocalAiClient(activityEngine)
         }
 
@@ -551,24 +598,16 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             monetization.incrementAiReply()
             runOnUiThread {
                 rememberTurn(userMsg, reply.text)
-                conversationText.text = "$youLabel: $userMsg\n$aiLabel: ${reply.text}"
-                // Scroll to the end so the newest part of the reply is visible.
-                val layout = conversationText.layout
-                if (layout != null) {
-                    val scrollDelta = layout.getLineBottom(conversationText.lineCount - 1) -
-                        conversationText.height - conversationText.scrollY
-                    if (scrollDelta > 0) conversationText.scrollBy(0, scrollDelta)
-                }
-                // Show the caption BEFORE TTS speaks so Mom can read along.
-                // (Previously it was shown in onDone, after speaking finished.)
-                showClosedCaption(
-                    if (currentInputLocale.language == "ru") "Ответ: ${reply.text}"
-                    else "AI: ${reply.text}",
-                    durationMs = 8000  // longer window for longer replies
-                )
+                appendTranscript("Friendai", reply.text)
                 speakReply(reply.text) {
                     animateEqualizer(false)
                     maybeEscalate(reply, activityEngine)
+                    // Keep the conversation flowing hands-free: listen again for Mom's next turn.
+                    if (conversationActive) {
+                        conversationText.postDelayed({
+                            if (conversationActive) ensureMicPermissionThenTalk()
+                        }, 800)
+                    }
                 }
             }
         }
