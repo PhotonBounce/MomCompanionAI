@@ -76,9 +76,10 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private val REQ_CODE_RECORD_AUDIO_FOR_TIMED_LISTENING = 2002
     private val REQ_CODE_NOTIFICATIONS_PERMISSION = 2003
 
-    /** Rolling text summary of the last few turns, sent to the backend for short-term context. */
+    /** Rolling text summary of recent turns, sent to the backend for conversational memory.
+     *  Kept generous so the AI can hold a long, hours-long conversation with continuity. */
     private val recentTurns = ArrayDeque<String>()
-    private val MAX_RECENT_TURNS = 6
+    private val MAX_RECENT_TURNS = 30
 
     /** Persistent engine so recentTopics/recentMoods/lastAIReply accumulate across push-to-talk turns. */
     private val activityEngine = CompanionEngine()
