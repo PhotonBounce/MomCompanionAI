@@ -55,6 +55,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private lateinit var animationIcon: ImageView
     private lateinit var talkButton: Button
     private lateinit var listeningModeBanner: TextView
+    private lateinit var bottomNav: com.google.android.material.bottomnavigation.BottomNavigationView
     private var tts: TextToSpeech? = null
     private var ttsReady = false
     private var ttsInitTried = false
@@ -143,10 +144,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             startActivity(intent)
         }
 
-        // Tucked-away caregiver entry point — PIN-gated so Mom can't wander into settings.
-        findViewById<android.widget.ImageButton>(R.id.caregiverSettingsButton)?.setOnClickListener {
-            startActivity(Intent(this, PinActivity::class.java))
-        }
+        // Caregiver settings now live behind the "Settings" tab in the bottom nav
+        // (PIN-gated in setupBottomNav), so Mom can't wander into them.
 
         // Animate header and conversation card fade-in
         findViewById<TextView>(R.id.headerTitle)?.apply {
@@ -157,6 +156,8 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
             alpha = 0f
             animate().alpha(1f).setDuration(1200).setStartDelay(300).start()
         }
+
+        setupBottomNav()
 
         showOnboardingIfNeeded(this)
         openFirstRunCaregiverSetupIfNeeded()
@@ -413,7 +414,57 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     private fun startConversation() {
         conversationActive = true
         updateTalkButtonLabel()
+        // Jump to the Chat tab so Mom can see the conversation as it happens.
+        if (::bottomNav.isInitialized) bottomNav.selectedItemId = R.id.nav_chat
         ensureMicPermissionThenTalk()
+    }
+
+    /** Wire the bottom navigation bar: Home / Chat / Settings / Language. */
+    private fun setupBottomNav() {
+        bottomNav = findViewById(R.id.bottomNav)
+        val homePanel = findViewById<android.view.View>(R.id.homePanel)
+        val chatPanel = findViewById<android.view.View>(R.id.conversationCard)
+        bottomNav.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> {
+                    homePanel.visibility = android.view.View.VISIBLE
+                    chatPanel.visibility = android.view.View.GONE
+                    true
+                }
+                R.id.nav_chat -> {
+                    homePanel.visibility = android.view.View.GONE
+                    chatPanel.visibility = android.view.View.VISIBLE
+                    true
+                }
+                R.id.nav_settings -> {
+                    // Caregiver settings live on their own PIN-gated page now (off the home screen).
+                    startActivity(Intent(this, PinActivity::class.java))
+                    false  // keep the current tab highlighted
+                }
+                R.id.nav_language -> {
+                    showLanguageChooser()
+                    false
+                }
+                else -> false
+            }
+        }
+        bottomNav.selectedItemId = R.id.nav_home
+    }
+
+    private fun showLanguageChooser() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Language / Язык")
+            .setItems(arrayOf("English", "Русский")) { _, which ->
+                currentInputLocale = if (which == 1) Locale("ru", "RU") else Locale.US
+                if (ttsReady) tts?.setLanguage(currentInputLocale)
+                updateTalkButtonLabel()
+                findViewById<TextView>(R.id.homeGreeting)?.text = if (isRu())
+                    "Здравствуйте 🙂\nНажмите «Говорить» и просто скажите —\nя рядом, чтобы составить вам компанию."
+                else
+                    "Hello 🙂\nTap Talk and just speak —\nI'm here to keep you company."
+                Toast.makeText(this, if (which == 1) "Язык: Русский" else "Language: English", Toast.LENGTH_SHORT).show()
+            }
+            .show()
     }
 
     /** End the conversation loop (back to idle). */
