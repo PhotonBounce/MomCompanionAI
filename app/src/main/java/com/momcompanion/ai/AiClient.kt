@@ -191,7 +191,10 @@ class GeminiAiClient(
                 org.json.JSONObject().put("maxOutputTokens", 220).put("temperature", 0.8)
             )
 
-        val url = java.net.URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent")
+        // gemini-2.0-flash was retired by Google (returns 404). Flash-Lite is fast, low-cost,
+        // and — unlike the heavier "thinking" flash models — returns clean short replies that
+        // fit a small token budget, which is exactly what a spoken companion needs.
+        val url = java.net.URL("https://generativelanguage.googleapis.com/v1beta/models/$GEMINI_MODEL:generateContent")
         val connection = (url.openConnection() as java.net.HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 10000
@@ -226,6 +229,12 @@ class GeminiAiClient(
 
         if (text.isBlank()) error("Gemini returned empty reply.")
         return CompanionReply(text)
+    }
+
+    companion object {
+        // Google retired gemini-2.0-flash (404). Flash-Lite is fast, cheap, non-thinking,
+        // and returns clean short replies suited to a spoken companion. Change here only.
+        const val GEMINI_MODEL = "gemini-3.1-flash-lite"
     }
 }
 
