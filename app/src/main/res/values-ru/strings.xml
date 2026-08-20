@@ -33,7 +33,7 @@
     <string name="rules_prompt">Правила</string>
     <string name="mom_profile_notes">Профиль мамы</string>
     <string name="basic_vocabulary">Базовый словарь (английский / русский)</string>
-    <string name="prompt_topics">Темы для беседы (по одной на строку, например: Москва, кошки, цветы)</string>
+    <string name="prompt_topics">Темы для беседы (по одной на строку, например: сад, кошки, цветы)</string>
     <string name="pin">PIN-код</string>
     <string name="caregiver_name">Имя помощника</string>
     <string name="caregiver_phone">Телефон помощника</string>

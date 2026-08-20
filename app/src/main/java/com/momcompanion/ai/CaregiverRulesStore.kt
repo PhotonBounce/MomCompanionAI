@@ -135,10 +135,10 @@ class CaregiverRulesStore(private val context: Context) {
                     # Name: (her preferred name — e.g. "Galya", "Nina", "Grandma")
                     # Language: Russian and/or English
                     # Age: (approximate is fine)
-                    # Hometown / birthplace: (e.g. Moscow, Odessa, Kiev, Novosibirsk)
+                    # Hometown / birthplace: (e.g. Odessa, Kiev, Novosibirsk)
 
                     # Favourite foods: (e.g. borscht, pirozhki, black bread, tea with jam)
-                    # Favourite music: (e.g. Soviet songs, classical, folk)
+                    # Favourite music: (e.g. folk, classical, Odessa songs)
                     # Favourite topics: (e.g. family, gardening, sewing, cooking)
                     # Family members: (e.g. daughter Katya, son Misha, grandchildren)
 
@@ -833,10 +833,10 @@ class CaregiverRulesStore(private val context: Context) {
             Volga river = река Волга
             Siberia = Сибирь
             the Urals = Урал
-            Red Square = Красная площадь
-            Kremlin = Кремль
+            Potemkin Stairs = Потёмкинская лестница (знаменитая лестница в Одессе)
+            Deribasovskaya = Дерибасовская (главная улица Одессы)
+            seaside boulevard = Приморский бульвар
             Hermitage = Эрмитаж
-            Arbat = Арбат
 
             ## Body Parts / Части тела
             head = голова
@@ -1450,10 +1450,10 @@ class CaregiverRulesStore(private val context: Context) {
             I used to sing = я раньше пела
             I know this song = я знаю эту песню
             do you know this melody = вы знаете эту мелодию
-            Katyusha = Катюша (patriotic wartime song)
-            Moscow Nights = Подмосковные вечера (beloved Soviet classic)
+            Ah, Odessa = Ах, Одесса, жемчужина у моря (любимая песня об Одессе)
+            Shalandy full of mullet = Шаланды полные кефали (одесская песня Бернеса)
             Kalinka = Калинка (folk song)
-            The Sacred War = Священная война (WWII anthem)
+            By the blue sea = У моря, у синего моря (тёплая песня о море)
             Oh frost = Ой мороз (folk favourite)
             lullaby = колыбельная
             choir = хор

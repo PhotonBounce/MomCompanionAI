@@ -362,6 +362,7 @@ class MainActivity : Activity(), TextToSpeech.OnInitListener {
     override fun onDestroy() {
         tts?.stop()
         tts?.shutdown()
+        PremiumVoice.stop()
         super.onDestroy()
     }
 
